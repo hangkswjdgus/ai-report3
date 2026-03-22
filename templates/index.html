@@ -1,33 +1,310 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>AI 보고서 생성기</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 문서 생성기</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6fb;
+            color: #222;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 22px;
+            margin: 30px 0 15px;
+            font-weight: bold;
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .template-card {
+            background: white;
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        }
+
+        .template-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .template-card.selected {
+            border-color: #4f46e5;
+            background: #eef2ff;
+        }
+
+        .template-image {
+            width: 100%;
+            height: 140px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #dbeafe, #ede9fe);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            margin-bottom: 12px;
+        }
+
+        .template-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .template-desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .form-box {
+            margin-top: 30px;
+            background: white;
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        button {
+            width: 100%;
+            border: none;
+            background: #4f46e5;
+            color: white;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #4338ca;
+        }
+
+        .result-box {
+            margin-top: 30px;
+            background: white;
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        }
+
+        #result {
+            white-space: pre-wrap;
+            line-height: 1.8;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .template-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .template-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>AI 문서 생성기</h1>
+        <p class="subtitle">원하는 문서 형식을 선택하고, 자세한 정보를 입력하면 더 정교한 결과를 생성합니다.</p>
 
-<h1>보고서 자동 생성</h1>
+        <div class="section-title">1. 문서 형식 선택</div>
+        <div class="template-grid">
+            <div class="template-card selected" onclick="selectTemplate('report', this)">
+                <div class="template-image">📄</div>
+                <div class="template-name">일반 보고서</div>
+                <div class="template-desc">대학 과제, 조사 보고서, 발표용 문서 등에 적합한 기본 보고서 형식</div>
+            </div>
 
-<input id="topic" placeholder="주제 입력">
-<button onclick="generate()">생성</button>
+            <div class="template-card" onclick="selectTemplate('paper', this)">
+                <div class="template-image">🎓</div>
+                <div class="template-name">논문 형식</div>
+                <div class="template-desc">연구 목적, 방법, 결과 중심의 학술적이고 정리된 글 형식</div>
+            </div>
 
-<pre id="result"></pre>
+            <div class="template-card" onclick="selectTemplate('resume', this)">
+                <div class="template-image">🧾</div>
+                <div class="template-name">이력서 / 자기소개서</div>
+                <div class="template-desc">지원 직무, 경험, 강점을 구조적으로 정리하는 형식</div>
+            </div>
 
-<script>
-async function generate() {
-    const topic = document.getElementById("topic").value;
+            <div class="template-card" onclick="selectTemplate('presentation', this)">
+                <div class="template-image">📊</div>
+                <div class="template-name">발표용 정리문</div>
+                <div class="template-desc">발표 자료 초안, 발표 대본, 발표용 핵심 정리에 적합한 형식</div>
+            </div>
+        </div>
 
-    const res = await fetch("/generate", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ topic: topic })
-    });
+        <div class="form-box">
+            <div class="section-title">2. 문서 정보 입력</div>
 
-    const data = await res.json();
-    document.getElementById("result").innerText = data.result;
-}
-</script>
+            <div class="form-group">
+                <label for="topic">주제</label>
+                <input type="text" id="topic" placeholder="예: 인공지능이 교육에 미치는 영향">
+            </div>
 
+            <div class="row">
+                <div class="form-group">
+                    <label for="length">문서 길이</label>
+                    <select id="length">
+                        <option value="짧게">짧게</option>
+                        <option value="보통" selected>보통</option>
+                        <option value="길게">길게</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tone">문체</label>
+                    <select id="tone">
+                        <option value="자연스럽고 이해하기 쉽게">자연스럽고 이해하기 쉽게</option>
+                        <option value="공식적이고 전문적으로">공식적이고 전문적으로</option>
+                        <option value="발표용으로 간결하게">발표용으로 간결하게</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="purpose">작성 목적</label>
+                <textarea id="purpose" placeholder="예: 대학 과제로 제출할 보고서이며, 인공지능의 장점과 한계를 균형 있게 다루고 싶음"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="details">포함하고 싶은 내용</label>
+                <textarea id="details" placeholder="예: 활용 사례, 장점, 단점, 미래 전망, 개인 의견까지 포함"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="extra">추가 요구사항</label>
+                <textarea id="extra" placeholder="예: 서론-본론-결론 형식, 예시 2개 포함, 너무 딱딱하지 않게"></textarea>
+            </div>
+
+            <button onclick="generate()">문서 생성하기</button>
+        </div>
+
+        <div class="result-box">
+            <div class="section-title">3. 생성 결과</div>
+            <div id="result">여기에 생성된 문서가 표시됩니다.</div>
+        </div>
+    </div>
+
+    <script>
+        let selectedTemplate = "report";
+
+        function selectTemplate(template, element) {
+            selectedTemplate = template;
+
+            const cards = document.querySelectorAll(".template-card");
+            cards.forEach(card => card.classList.remove("selected"));
+
+            element.classList.add("selected");
+        }
+
+        async function generate() {
+            const topic = document.getElementById("topic").value;
+            const length = document.getElementById("length").value;
+            const tone = document.getElementById("tone").value;
+            const purpose = document.getElementById("purpose").value;
+            const details = document.getElementById("details").value;
+            const extra = document.getElementById("extra").value;
+
+            document.getElementById("result").innerText = "생성 중입니다...";
+
+            try {
+                const res = await fetch("/generate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        template: selectedTemplate,
+                        topic: topic,
+                        length: length,
+                        tone: tone,
+                        purpose: purpose,
+                        details: details,
+                        extra: extra
+                    })
+                });
+
+                const data = await res.json();
+                document.getElementById("result").innerText = data.result;
+            } catch (error) {
+                document.getElementById("result").innerText = "오류가 발생했습니다.";
+            }
+        }
+    </script>
 </body>
 </html>
