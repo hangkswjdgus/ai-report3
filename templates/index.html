@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI 보고서 생성기</title>
+</head>
+<body>
+
+<h1>보고서 자동 생성</h1>
+
+<input id="topic" placeholder="주제 입력">
+<button onclick="generate()">생성</button>
+
+<pre id="result"></pre>
+
+<script>
+async function generate() {
+    const topic = document.getElementById("topic").value;
+
+    const res = await fetch("/generate", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ topic: topic })
+    });
+
+    const data = await res.json();
+    document.getElementById("result").innerText = data.result;
+}
+</script>
+
+</body>
+</html>
