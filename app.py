@@ -163,7 +163,6 @@ def generate():
             body = parsed.get("body", "")
             references = parsed.get("references", [])
         except Exception:
-            # JSON 파싱 실패 시 안전한 fallback
             title = "생성된 문서"
             body = raw_text
             references = ["출처 분리에 실패했습니다. 본문 내용을 직접 확인해 주세요."]
