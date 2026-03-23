@@ -265,7 +265,7 @@
                 <textarea id="extra" placeholder="예: 서론-본론-결론 형식, 실제 통계 포함, 출처 명확히 표시"></textarea>
             </div>
 
-            <button id="generateButton" onclick="generate()">문서 생성하기</button>
+            <button id="generateButton" onclick="generateDocument()">문서 생성하기</button>
             <div class="notice">입력을 많이 할수록 결과가 더 구체적이고 풍부해집니다.</div>
         </div>
 
@@ -295,13 +295,13 @@
             element.classList.add("selected");
         }
 
-        async function generate() {
-            const topic = document.getElementById("topic").value;
+        async function generateDocument() {
+            const topic = document.getElementById("topic").value.trim();
             const length = document.getElementById("length").value;
             const tone = document.getElementById("tone").value;
-            const purpose = document.getElementById("purpose").value;
-            const details = document.getElementById("details").value;
-            const extra = document.getElementById("extra").value;
+            const purpose = document.getElementById("purpose").value.trim();
+            const details = document.getElementById("details").value.trim();
+            const extra = document.getElementById("extra").value.trim();
 
             const resultTitle = document.getElementById("resultTitle");
             const resultBody = document.getElementById("resultBody");
@@ -316,7 +316,7 @@
             button.innerText = "생성 중...";
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            const timeoutId = setTimeout(() => controller.abort(), 90000);
 
             try {
                 const res = await fetch("/generate", {
@@ -338,14 +338,24 @@
 
                 clearTimeout(timeoutId);
 
+                const contentType = res.headers.get("content-type") || "";
+                if (!contentType.includes("application/json")) {
+                    const text = await res.text();
+                    throw new Error(`서버가 JSON이 아닌 응답을 반환했습니다: ${text}`);
+                }
+
                 const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.body || "서버 오류가 발생했습니다.");
+                }
 
                 resultTitle.innerText = data.title || "생성된 문서";
                 resultBody.innerText = data.body || "본문을 받아오지 못했습니다.";
 
                 referenceList.innerHTML = "";
 
-                if (data.references && data.references.length > 0) {
+                if (Array.isArray(data.references) && data.references.length > 0) {
                     data.references.forEach(ref => {
                         const li = document.createElement("li");
                         li.innerText = ref;
@@ -359,13 +369,14 @@
                 if (error.name === "AbortError") {
                     resultTitle.innerText = "시간 초과";
                     resultBody.innerText = "생성이 너무 오래 걸려 중단되었습니다. 입력을 줄이거나 다시 시도해 주세요.";
-                    referenceList.innerHTML = "<li>참고자료를 불러오지 못했습니다.</li>";
                 } else {
                     resultTitle.innerText = "오류 발생";
-                    resultBody.innerText = "요청 처리 중 문제가 발생했습니다.";
-                    referenceList.innerHTML = "<li>참고자료를 불러오지 못했습니다.</li>";
+                    resultBody.innerText = error.message || "요청 처리 중 문제가 발생했습니다.";
                 }
+
+                referenceList.innerHTML = "<li>참고자료를 불러오지 못했습니다.</li>";
             } finally {
+                clearTimeout(timeoutId);
                 button.disabled = false;
                 button.innerText = "문서 생성하기";
             }

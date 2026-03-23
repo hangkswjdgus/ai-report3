@@ -2,12 +2,18 @@ from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 import os
 import json
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
+
+client = OpenAI(api_key=api_key)
 
 
 def build_prompt(template, topic, length, tone, purpose, details, extra):
@@ -32,6 +38,8 @@ def build_prompt(template, topic, length, tone, purpose, details, extra):
 8. 문서 구조를 제목과 소제목으로 명확히 나눌 것.
 9. 마지막 참고자료는 실제 사용한 자료만 정리할 것.
 10. 반드시 JSON 형식으로만 답할 것.
+11. 설명문, 서문, 코드블록 없이 JSON 객체만 출력할 것.
+12. body에는 문서 본문만 넣고, references에는 참고자료 목록만 넣을 것.
 
 반드시 아래 JSON 형식으로만 응답해라:
 {{
@@ -112,7 +120,7 @@ def build_prompt(template, topic, length, tone, purpose, details, extra):
     web_rules = """
 특히 중요:
 - 웹 검색을 통해 실제로 확인 가능한 근거만 사용해라.
-- 한국 자료가 있으면 우선 포함하고, 부족하면 해외 공공기관/대학/학술 자료를 추가해라.
+- 한국 자료가 있으면 우선 포함하고, 부족하면 해외 공공기관, 대학, 학술 자료를 추가해라.
 - 교육, 기술, 경제, 사회 주제는 정부기관, 공공기관, 대학, 학술지, 국제기구 자료를 우선 사용해라.
 - references 배열에는 실제 사용한 출처만 넣어라.
 - references는 최소 2개 이상 넣으려고 시도하되, 찾지 못하면 무리해서 지어내지 말아라.
@@ -121,23 +129,116 @@ def build_prompt(template, topic, length, tone, purpose, details, extra):
     return f"{common_rules}\n{structure}\n{web_rules}"
 
 
-@app.route('/')
+def extract_json_text(raw_text):
+    """
+    모델 응답에서 JSON 부분만 최대한 안정적으로 추출
+    """
+    text = raw_text.strip()
+
+    if text.startswith("```json"):
+        text = text[7:]
+    elif text.startswith("```"):
+        text = text[3:]
+
+    if text.endswith("```"):
+        text = text[:-3]
+
+    text = text.strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        text = text[start:end + 1]
+
+    return text.strip()
+
+
+def safe_decode_json_string(value):
+    """
+    JSON 문자열 내부의 \\n 같은 이스케이프를 사람이 읽는 형태로 복원
+    """
+    if not isinstance(value, str):
+        return str(value)
+
+    try:
+        return bytes(value, "utf-8").decode("unicode_escape")
+    except Exception:
+        return value
+
+
+def parse_model_response(raw_text):
+    """
+    1차: 정상 JSON 파싱
+    2차: JSON 비슷한 문자열에서 title/body/references 강제 추출
+    """
+    cleaned_text = extract_json_text(raw_text)
+
+    try:
+        parsed = json.loads(cleaned_text)
+
+        title = str(parsed.get("title", "생성된 문서")).strip()
+        body = parsed.get("body", "")
+        references = parsed.get("references", [])
+
+        body = safe_decode_json_string(body).strip()
+
+        if not isinstance(references, list):
+            references = [str(references)]
+
+        references = [safe_decode_json_string(str(ref)).strip() for ref in references if str(ref).strip()]
+
+        if not title:
+            title = "생성된 문서"
+
+        if not body:
+            body = "본문을 받아오지 못했습니다."
+
+        return title, body, references
+
+    except Exception:
+        title = "생성된 문서"
+        body = raw_text.strip()
+        references = ["출처 분리에 실패했습니다. 본문 내용을 직접 확인해 주세요."]
+
+        try:
+            title_match = re.search(r'"title"\s*:\s*"(.*?)"\s*,', raw_text, re.DOTALL)
+            body_match = re.search(r'"body"\s*:\s*"(.*?)"\s*(,\s*"references"|})', raw_text, re.DOTALL)
+            refs_match = re.search(r'"references"\s*:\s*(\[[\s\S]*?\])', raw_text, re.DOTALL)
+
+            if title_match:
+                title = safe_decode_json_string(title_match.group(1)).strip()
+
+            if body_match:
+                body = safe_decode_json_string(body_match.group(1)).strip()
+
+            if refs_match:
+                parsed_refs = json.loads(refs_match.group(1))
+                if isinstance(parsed_refs, list):
+                    references = [safe_decode_json_string(str(ref)).strip() for ref in parsed_refs if str(ref).strip()]
+
+        except Exception:
+            pass
+
+        return title, body, references
+
+
+@app.route("/")
 def home():
     return render_template("index.html")
 
 
-@app.route('/generate', methods=['POST'])
+@app.route("/generate", methods=["POST"])
 def generate():
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
 
-        template = data.get("template") or "report"
-        topic = data.get("topic") or "일반적인 주제"
-        length = data.get("length") or "보통"
-        tone = data.get("tone") or "자연스럽고 이해하기 쉽게"
-        purpose = data.get("purpose") or "일반적인 설명"
-        details = data.get("details") or "기본적인 내용"
-        extra = data.get("extra") or "없음"
+        template = (data.get("template") or "report").strip()
+        topic = (data.get("topic") or "일반적인 주제").strip()
+        length = (data.get("length") or "보통").strip()
+        tone = (data.get("tone") or "자연스럽고 이해하기 쉽게").strip()
+        purpose = (data.get("purpose") or "일반적인 설명").strip()
+        details = (data.get("details") or "기본적인 내용").strip()
+        extra = (data.get("extra") or "없음").strip()
 
         prompt = build_prompt(
             template=template,
@@ -156,16 +257,7 @@ def generate():
         )
 
         raw_text = response.output_text.strip()
-
-        try:
-            parsed = json.loads(raw_text)
-            title = parsed.get("title", "생성된 문서")
-            body = parsed.get("body", "")
-            references = parsed.get("references", [])
-        except Exception:
-            title = "생성된 문서"
-            body = raw_text
-            references = ["출처 분리에 실패했습니다. 본문 내용을 직접 확인해 주세요."]
+        title, body, references = parse_model_response(raw_text)
 
         return jsonify({
             "title": title,
