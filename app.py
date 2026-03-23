@@ -155,22 +155,25 @@ def extract_json_text(raw_text):
 
 def safe_decode_json_string(value):
     """
-    JSON 문자열 내부의 \\n 같은 이스케이프를 사람이 읽는 형태로 복원
+    이미 정상 문자열이면 그대로 두고,
+    JSON 이스케이프가 남아 있을 때만 최소한으로 정리
     """
     if not isinstance(value, str):
         return str(value)
 
-    try:
-        return bytes(value, "utf-8").decode("unicode_escape")
-    except Exception:
+    # 이미 정상 한글이면 절대 건드리지 않음
+    if any('\uac00' <= ch <= '\ud7a3' for ch in value):
         return value
+
+    # 줄바꿈 이스케이프만 최소한으로 정리
+    value = value.replace("\\n", "\n")
+    value = value.replace("\\t", "\t")
+    value = value.replace('\\"', '"')
+
+    return value
 
 
 def parse_model_response(raw_text):
-    """
-    1차: 정상 JSON 파싱
-    2차: JSON 비슷한 문자열에서 title/body/references 강제 추출
-    """
     cleaned_text = extract_json_text(raw_text)
 
     try:
@@ -180,12 +183,13 @@ def parse_model_response(raw_text):
         body = parsed.get("body", "")
         references = parsed.get("references", [])
 
-        body = safe_decode_json_string(body).strip()
+        if not isinstance(body, str):
+            body = str(body)
 
         if not isinstance(references, list):
             references = [str(references)]
 
-        references = [safe_decode_json_string(str(ref)).strip() for ref in references if str(ref).strip()]
+        references = [str(ref).strip() for ref in references if str(ref).strip()]
 
         if not title:
             title = "생성된 문서"
@@ -193,7 +197,7 @@ def parse_model_response(raw_text):
         if not body:
             body = "본문을 받아오지 못했습니다."
 
-        return title, body, references
+        return title, body.strip(), references
 
     except Exception:
         title = "생성된 문서"
@@ -206,15 +210,15 @@ def parse_model_response(raw_text):
             refs_match = re.search(r'"references"\s*:\s*(\[[\s\S]*?\])', raw_text, re.DOTALL)
 
             if title_match:
-                title = safe_decode_json_string(title_match.group(1)).strip()
+                title = title_match.group(1).replace("\\n", "\n").replace('\\"', '"').strip()
 
             if body_match:
-                body = safe_decode_json_string(body_match.group(1)).strip()
+                body = body_match.group(1).replace("\\n", "\n").replace('\\"', '"').strip()
 
             if refs_match:
                 parsed_refs = json.loads(refs_match.group(1))
                 if isinstance(parsed_refs, list):
-                    references = [safe_decode_json_string(str(ref)).strip() for ref in parsed_refs if str(ref).strip()]
+                    references = [str(ref).strip() for ref in parsed_refs if str(ref).strip()]
 
         except Exception:
             pass
