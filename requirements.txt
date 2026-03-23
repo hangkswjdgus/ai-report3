@@ -2,3 +2,5 @@ flask
 openai>=1.0.0
 python-dotenv
 gunicorn
+python-docx
+reportlab
