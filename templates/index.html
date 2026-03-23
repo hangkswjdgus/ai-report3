@@ -88,7 +88,9 @@
             line-height: 1.5;
         }
 
-        .form-box {
+        .form-box,
+        .result-box,
+        .reference-box {
             margin-top: 30px;
             background: white;
             border-radius: 18px;
@@ -142,21 +144,33 @@
             background: #4338ca;
         }
 
-        .result-box {
-            margin-top: 30px;
-            background: white;
-            border-radius: 18px;
-            padding: 25px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
 
-        #result {
+        #resultTitle {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        #resultBody {
             white-space: pre-wrap;
+            line-height: 1.9;
+            font-size: 16px;
+        }
+
+        #referenceList {
+            margin: 0;
+            padding-left: 20px;
             line-height: 1.8;
         }
 
-        .hidden {
-            display: none;
+        .notice {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
         }
 
         @media (max-width: 900px) {
@@ -179,7 +193,7 @@
 <body>
     <div class="container">
         <h1>AI 문서 생성기</h1>
-        <p class="subtitle">원하는 문서 형식을 선택하고, 자세한 정보를 입력하면 더 정교한 결과를 생성합니다.</p>
+        <p class="subtitle">템플릿을 선택하고 정보를 입력하면, 구조화된 문서와 참고자료를 함께 생성합니다.</p>
 
         <div class="section-title">1. 문서 형식 선택</div>
         <div class="template-grid">
@@ -248,15 +262,24 @@
 
             <div class="form-group">
                 <label for="extra">추가 요구사항</label>
-                <textarea id="extra" placeholder="예: 서론-본론-결론 형식, 예시 2개 포함, 너무 딱딱하지 않게"></textarea>
+                <textarea id="extra" placeholder="예: 서론-본론-결론 형식, 실제 통계 포함, 출처 명확히 표시"></textarea>
             </div>
 
-            <button onclick="generate()">문서 생성하기</button>
+            <button id="generateButton" onclick="generate()">문서 생성하기</button>
+            <div class="notice">입력을 많이 할수록 결과가 더 구체적이고 풍부해집니다.</div>
         </div>
 
         <div class="result-box">
             <div class="section-title">3. 생성 결과</div>
-            <div id="result">여기에 생성된 문서가 표시됩니다.</div>
+            <div id="resultTitle">여기에 문서 제목이 표시됩니다.</div>
+            <div id="resultBody">여기에 생성된 문서 본문이 표시됩니다.</div>
+        </div>
+
+        <div class="reference-box">
+            <div class="section-title">4. 참고자료</div>
+            <ul id="referenceList">
+                <li>여기에 참고자료가 표시됩니다.</li>
+            </ul>
         </div>
     </div>
 
@@ -280,7 +303,20 @@
             const details = document.getElementById("details").value;
             const extra = document.getElementById("extra").value;
 
-            document.getElementById("result").innerText = "생성 중입니다...";
+            const resultTitle = document.getElementById("resultTitle");
+            const resultBody = document.getElementById("resultBody");
+            const referenceList = document.getElementById("referenceList");
+            const button = document.getElementById("generateButton");
+
+            resultTitle.innerText = "생성 중입니다...";
+            resultBody.innerText = "잠시만 기다려 주세요.";
+            referenceList.innerHTML = "<li>참고자료를 정리하는 중입니다...</li>";
+
+            button.disabled = true;
+            button.innerText = "생성 중...";
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
 
             try {
                 const res = await fetch("/generate", {
@@ -296,13 +332,42 @@
                         purpose: purpose,
                         details: details,
                         extra: extra
-                    })
+                    }),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
+
                 const data = await res.json();
-                document.getElementById("result").innerText = data.result;
+
+                resultTitle.innerText = data.title || "생성된 문서";
+                resultBody.innerText = data.body || "본문을 받아오지 못했습니다.";
+
+                referenceList.innerHTML = "";
+
+                if (data.references && data.references.length > 0) {
+                    data.references.forEach(ref => {
+                        const li = document.createElement("li");
+                        li.innerText = ref;
+                        referenceList.appendChild(li);
+                    });
+                } else {
+                    referenceList.innerHTML = "<li>표시할 참고자료가 없습니다.</li>";
+                }
+
             } catch (error) {
-                document.getElementById("result").innerText = "오류가 발생했습니다.";
+                if (error.name === "AbortError") {
+                    resultTitle.innerText = "시간 초과";
+                    resultBody.innerText = "생성이 너무 오래 걸려 중단되었습니다. 입력을 줄이거나 다시 시도해 주세요.";
+                    referenceList.innerHTML = "<li>참고자료를 불러오지 못했습니다.</li>";
+                } else {
+                    resultTitle.innerText = "오류 발생";
+                    resultBody.innerText = "요청 처리 중 문제가 발생했습니다.";
+                    referenceList.innerHTML = "<li>참고자료를 불러오지 못했습니다.</li>";
+                }
+            } finally {
+                button.disabled = false;
+                button.innerText = "문서 생성하기";
             }
         }
     </script>
