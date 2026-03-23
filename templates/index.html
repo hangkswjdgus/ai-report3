@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 문서 생성기</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -17,8 +15,8 @@
         }
 
         .container {
-            max-width: 1100px;
-            margin: 40px auto;
+            max-width: 1180px;
+            margin: 30px auto;
             padding: 20px;
         }
 
@@ -30,7 +28,7 @@
         .subtitle {
             text-align: center;
             color: #666;
-            margin-bottom: 30px;
+            margin-bottom: 28px;
         }
 
         .section-title {
@@ -42,21 +40,21 @@
         .template-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+            gap: 18px;
         }
 
         .template-card {
             background: white;
             border: 2px solid transparent;
             border-radius: 16px;
-            padding: 15px;
+            padding: 16px;
             cursor: pointer;
             transition: 0.2s;
             box-shadow: 0 4px 14px rgba(0,0,0,0.08);
         }
 
         .template-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-3px);
         }
 
         .template-card.selected {
@@ -66,18 +64,18 @@
 
         .template-image {
             width: 100%;
-            height: 140px;
+            height: 120px;
             border-radius: 12px;
             background: linear-gradient(135deg, #dbeafe, #ede9fe);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 42px;
+            font-size: 38px;
             margin-bottom: 12px;
         }
 
         .template-name {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: bold;
             margin-bottom: 8px;
         }
@@ -88,18 +86,16 @@
             line-height: 1.5;
         }
 
-        .form-box,
-        .result-box,
-        .reference-box {
-            margin-top: 30px;
+        .form-box, .result-box, .reference-box, .citation-box {
+            margin-top: 26px;
             background: white;
             border-radius: 18px;
-            padding: 25px;
+            padding: 24px;
             box-shadow: 0 4px 14px rgba(0,0,0,0.08);
         }
 
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
 
         label {
@@ -117,27 +113,31 @@
         }
 
         textarea {
-            min-height: 110px;
+            min-height: 100px;
             resize: vertical;
         }
 
-        .row {
+        .row-2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 18px;
+            gap: 16px;
+        }
+
+        .row-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
         }
 
         button {
-            width: 100%;
             border: none;
             background: #4f46e5;
             color: white;
-            padding: 14px;
+            padding: 13px 18px;
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
         }
 
         button:hover {
@@ -145,8 +145,24 @@
         }
 
         button:disabled {
-            opacity: 0.7;
+            opacity: 0.75;
             cursor: not-allowed;
+        }
+
+        .main-button {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .download-buttons button {
+            min-width: 180px;
         }
 
         #resultTitle {
@@ -161,7 +177,7 @@
             font-size: 16px;
         }
 
-        #referenceList {
+        #referenceList, #citationList {
             margin: 0;
             padding-left: 20px;
             line-height: 1.8;
@@ -173,17 +189,23 @@
             margin-top: 10px;
         }
 
-        @media (max-width: 900px) {
+        .status-box {
+            margin-top: 12px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        @media (max-width: 980px) {
             .template-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
 
-            .row {
+            .row-2, .row-3 {
                 grid-template-columns: 1fr;
             }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 620px) {
             .template-grid {
                 grid-template-columns: 1fr;
             }
@@ -193,44 +215,50 @@
 <body>
     <div class="container">
         <h1>AI 문서 생성기</h1>
-        <p class="subtitle">템플릿을 선택하고 정보를 입력하면, 구조화된 문서와 참고자료를 함께 생성합니다.</p>
+        <p class="subtitle">문서 생성, 참고문헌 정리, 인용 요약, PDF/DOCX 저장까지 한 번에 처리합니다.</p>
 
         <div class="section-title">1. 문서 형식 선택</div>
         <div class="template-grid">
             <div class="template-card selected" onclick="selectTemplate('report', this)">
                 <div class="template-image">📄</div>
                 <div class="template-name">일반 보고서</div>
-                <div class="template-desc">대학 과제, 조사 보고서, 발표용 문서 등에 적합한 기본 보고서 형식</div>
+                <div class="template-desc">대학 과제, 조사 보고서, 제출용 레포트 형식</div>
             </div>
 
             <div class="template-card" onclick="selectTemplate('paper', this)">
                 <div class="template-image">🎓</div>
                 <div class="template-name">논문 형식</div>
-                <div class="template-desc">연구 목적, 방법, 결과 중심의 학술적이고 정리된 글 형식</div>
+                <div class="template-desc">초록, 관련 연구, 분석 중심의 학술형 구조</div>
             </div>
 
             <div class="template-card" onclick="selectTemplate('resume', this)">
                 <div class="template-image">🧾</div>
                 <div class="template-name">이력서 / 자기소개서</div>
-                <div class="template-desc">지원 직무, 경험, 강점을 구조적으로 정리하는 형식</div>
+                <div class="template-desc">경험과 역량을 정리하는 자기소개형 문서</div>
             </div>
 
             <div class="template-card" onclick="selectTemplate('presentation', this)">
                 <div class="template-image">📊</div>
-                <div class="template-name">발표용 정리문</div>
-                <div class="template-desc">발표 자료 초안, 발표 대본, 발표용 핵심 정리에 적합한 형식</div>
+                <div class="template-name">발표문</div>
+                <div class="template-desc">발표 원고, 발표용 설명문, 발표 정리문 형식</div>
             </div>
         </div>
 
         <div class="form-box">
             <div class="section-title">2. 문서 정보 입력</div>
 
-            <div class="form-group">
-                <label for="topic">주제</label>
-                <input type="text" id="topic" placeholder="예: 인공지능이 교육에 미치는 영향">
-            </div>
+            <div class="row-3">
+                <div class="form-group">
+                    <label for="mode">작성 모드</label>
+                    <select id="mode">
+                        <option value="natural">자연스러운 문체 모드</option>
+                        <option value="draft_assist">초안 보조 모드</option>
+                        <option value="revision_assist">수정 보조 모드</option>
+                        <option value="evidence_boost">근거 강화 모드</option>
+                        <option value="personalized">개인화 모드</option>
+                    </select>
+                </div>
 
-            <div class="row">
                 <div class="form-group">
                     <label for="length">문서 길이</label>
                     <select id="length">
@@ -245,78 +273,157 @@
                     <select id="tone">
                         <option value="자연스럽고 이해하기 쉽게">자연스럽고 이해하기 쉽게</option>
                         <option value="공식적이고 전문적으로">공식적이고 전문적으로</option>
+                        <option value="설득력 있고 정돈되게">설득력 있고 정돈되게</option>
                         <option value="발표용으로 간결하게">발표용으로 간결하게</option>
                     </select>
                 </div>
             </div>
 
             <div class="form-group">
+                <label for="topic">주제</label>
+                <input type="text" id="topic" placeholder="예: 인공지능이 교육에 미치는 영향">
+            </div>
+
+            <div class="form-group">
                 <label for="purpose">작성 목적</label>
-                <textarea id="purpose" placeholder="예: 대학 과제로 제출할 보고서이며, 인공지능의 장점과 한계를 균형 있게 다루고 싶음"></textarea>
+                <textarea id="purpose" placeholder="예: 대학 과제로 제출할 보고서이며, 장점과 한계를 균형 있게 다루고 싶음"></textarea>
             </div>
 
             <div class="form-group">
                 <label for="details">포함하고 싶은 내용</label>
-                <textarea id="details" placeholder="예: 활용 사례, 장점, 단점, 미래 전망, 개인 의견까지 포함"></textarea>
+                <textarea id="details" placeholder="예: 실제 활용 사례, 통계, 장점, 단점, 향후 전망"></textarea>
             </div>
 
             <div class="form-group">
                 <label for="extra">추가 요구사항</label>
-                <textarea id="extra" placeholder="예: 서론-본론-결론 형식, 실제 통계 포함, 출처 명확히 표시"></textarea>
+                <textarea id="extra" placeholder="예: APA 참고문헌 정리, 본문 인용 포함, 서론-본론-결론 분명하게"></textarea>
             </div>
 
-            <button id="generateButton" onclick="generateDocument()">문서 생성하기</button>
-            <div class="notice">입력을 많이 할수록 결과가 더 구체적이고 풍부해집니다.</div>
+            <div class="row-2">
+                <div class="form-group">
+                    <label for="major">전공</label>
+                    <input type="text" id="major" placeholder="예: 교육학">
+                </div>
+
+                <div class="form-group">
+                    <label for="class_context">수업 / 과제 맥락</label>
+                    <input type="text" id="class_context" placeholder="예: 교육공학 수업 기말 과제">
+                </div>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label for="user_perspective">사용자 관점</label>
+                    <textarea id="user_perspective" placeholder="예: 기술 발전 자체보다 실제 학습 효과에 더 관심이 있음"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="personal_experience">개인 경험 또는 생각</label>
+                    <textarea id="personal_experience" placeholder="예: 온라인 학습 플랫폼을 사용해 본 경험이 있음"></textarea>
+                </div>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label for="professor_style">교수 / 평가 스타일</label>
+                    <input type="text" id="professor_style" placeholder="예: 근거와 해석을 함께 쓰는 보고서를 선호함">
+                </div>
+
+                <div class="form-group">
+                    <label for="target_company">지원 기업 / 기관 (이력서용)</label>
+                    <input type="text" id="target_company" placeholder="예: 네이버 / 공공기관 / 교육 스타트업">
+                </div>
+            </div>
+
+            <button class="main-button" id="generateButton" onclick="generateDocument()">문서 생성하기</button>
+            <div class="notice">개인화 모드에서는 수업 맥락, 관점, 경험을 자세히 적을수록 결과가 더 좋아집니다.</div>
+            <div class="status-box" id="statusBox"></div>
         </div>
 
         <div class="result-box">
             <div class="section-title">3. 생성 결과</div>
             <div id="resultTitle">여기에 문서 제목이 표시됩니다.</div>
             <div id="resultBody">여기에 생성된 문서 본문이 표시됩니다.</div>
+
+            <div class="download-buttons">
+                <button id="downloadPdfButton" onclick="downloadFile('pdf')" disabled>PDF 다운로드</button>
+                <button id="downloadDocxButton" onclick="downloadFile('docx')" disabled>DOCX 다운로드</button>
+            </div>
+        </div>
+
+        <div class="citation-box">
+            <div class="section-title">4. 본문 인용 요약</div>
+            <ul id="citationList">
+                <li>여기에 본문에 반영된 주요 인용이 표시됩니다.</li>
+            </ul>
         </div>
 
         <div class="reference-box">
-            <div class="section-title">4. 참고자료</div>
+            <div class="section-title">5. 참고문헌</div>
             <ul id="referenceList">
-                <li>여기에 참고자료가 표시됩니다.</li>
+                <li>여기에 참고문헌이 표시됩니다.</li>
             </ul>
         </div>
     </div>
 
     <script>
         let selectedTemplate = "report";
+        let latestDocument = null;
 
         function selectTemplate(template, element) {
             selectedTemplate = template;
 
             const cards = document.querySelectorAll(".template-card");
             cards.forEach(card => card.classList.remove("selected"));
-
             element.classList.add("selected");
         }
 
+        function getPayload() {
+            return {
+                template: selectedTemplate,
+                mode: document.getElementById("mode").value,
+                topic: document.getElementById("topic").value.trim(),
+                length: document.getElementById("length").value,
+                tone: document.getElementById("tone").value,
+                purpose: document.getElementById("purpose").value.trim(),
+                details: document.getElementById("details").value.trim(),
+                extra: document.getElementById("extra").value.trim(),
+                major: document.getElementById("major").value.trim(),
+                class_context: document.getElementById("class_context").value.trim(),
+                user_perspective: document.getElementById("user_perspective").value.trim(),
+                personal_experience: document.getElementById("personal_experience").value.trim(),
+                professor_style: document.getElementById("professor_style").value.trim(),
+                target_company: document.getElementById("target_company").value.trim()
+            };
+        }
+
         async function generateDocument() {
-            const topic = document.getElementById("topic").value.trim();
-            const length = document.getElementById("length").value;
-            const tone = document.getElementById("tone").value;
-            const purpose = document.getElementById("purpose").value.trim();
-            const details = document.getElementById("details").value.trim();
-            const extra = document.getElementById("extra").value.trim();
+            const payload = getPayload();
 
             const resultTitle = document.getElementById("resultTitle");
             const resultBody = document.getElementById("resultBody");
             const referenceList = document.getElementById("referenceList");
+            const citationList = document.getElementById("citationList");
             const button = document.getElementById("generateButton");
+            const statusBox = document.getElementById("statusBox");
+            const pdfBtn = document.getElementById("downloadPdfButton");
+            const docxBtn = document.getElementById("downloadDocxButton");
 
             resultTitle.innerText = "생성 중입니다...";
             resultBody.innerText = "잠시만 기다려 주세요.";
-            referenceList.innerHTML = "<li>참고자료를 정리하는 중입니다...</li>";
+            referenceList.innerHTML = "<li>참고문헌을 정리하는 중입니다...</li>";
+            citationList.innerHTML = "<li>본문 인용을 정리하는 중입니다...</li>";
+            statusBox.innerText = "문서를 생성하고 있습니다.";
+
+            latestDocument = null;
+            pdfBtn.disabled = true;
+            docxBtn.disabled = true;
 
             button.disabled = true;
             button.innerText = "생성 중...";
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 90000);
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
 
             try {
                 const res = await fetch("/generate", {
@@ -324,15 +431,7 @@
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({
-                        template: selectedTemplate,
-                        topic: topic,
-                        length: length,
-                        tone: tone,
-                        purpose: purpose,
-                        details: details,
-                        extra: extra
-                    }),
+                    body: JSON.stringify(payload),
                     signal: controller.signal
                 });
 
@@ -346,24 +445,45 @@
 
                 const data = await res.json();
 
-                if (!res.ok) {
-                    throw new Error(data.body || "서버 오류가 발생했습니다.");
+                if (!res.ok || !data.success) {
+                    throw new Error(data.body || "문서 생성 중 서버 오류가 발생했습니다.");
                 }
 
-                resultTitle.innerText = data.title || "생성된 문서";
-                resultBody.innerText = data.body || "본문을 받아오지 못했습니다.";
+                latestDocument = {
+                    title: data.title || "생성된 문서",
+                    body: data.body || "",
+                    references: Array.isArray(data.references) ? data.references : [],
+                    citations: Array.isArray(data.citations) ? data.citations : []
+                };
+
+                resultTitle.innerText = latestDocument.title;
+                resultBody.innerText = latestDocument.body;
 
                 referenceList.innerHTML = "";
-
-                if (Array.isArray(data.references) && data.references.length > 0) {
-                    data.references.forEach(ref => {
+                if (latestDocument.references.length > 0) {
+                    latestDocument.references.forEach(ref => {
                         const li = document.createElement("li");
                         li.innerText = ref;
                         referenceList.appendChild(li);
                     });
                 } else {
-                    referenceList.innerHTML = "<li>표시할 참고자료가 없습니다.</li>";
+                    referenceList.innerHTML = "<li>표시할 참고문헌이 없습니다.</li>";
                 }
+
+                citationList.innerHTML = "";
+                if (latestDocument.citations.length > 0) {
+                    latestDocument.citations.forEach(item => {
+                        const li = document.createElement("li");
+                        li.innerText = item;
+                        citationList.appendChild(li);
+                    });
+                } else {
+                    citationList.innerHTML = "<li>표시할 인용 요약이 없습니다.</li>";
+                }
+
+                pdfBtn.disabled = false;
+                docxBtn.disabled = false;
+                statusBox.innerText = "문서 생성이 완료되었습니다. PDF 또는 DOCX로 저장할 수 있습니다.";
 
             } catch (error) {
                 if (error.name === "AbortError") {
@@ -374,11 +494,76 @@
                     resultBody.innerText = error.message || "요청 처리 중 문제가 발생했습니다.";
                 }
 
-                referenceList.innerHTML = "<li>참고자료를 불러오지 못했습니다.</li>";
+                referenceList.innerHTML = "<li>참고문헌을 불러오지 못했습니다.</li>";
+                citationList.innerHTML = "<li>인용 요약을 불러오지 못했습니다.</li>";
+                statusBox.innerText = "문서 생성에 실패했습니다.";
             } finally {
                 clearTimeout(timeoutId);
                 button.disabled = false;
                 button.innerText = "문서 생성하기";
+            }
+        }
+
+        async function downloadFile(fileType) {
+            if (!latestDocument) {
+                alert("먼저 문서를 생성해 주세요.");
+                return;
+            }
+
+            const endpoint = fileType === "pdf" ? "/download/pdf" : "/download/docx";
+            const button = fileType === "pdf"
+                ? document.getElementById("downloadPdfButton")
+                : document.getElementById("downloadDocxButton");
+
+            const originalText = button.innerText;
+            button.disabled = true;
+            button.innerText = "준비 중...";
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(latestDocument)
+                });
+
+                if (!response.ok) {
+                    let message = "파일 다운로드에 실패했습니다.";
+                    try {
+                        const errorData = await response.json();
+                        message = errorData.message || message;
+                    } catch (_) {}
+                    throw new Error(message);
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+
+                const disposition = response.headers.get("Content-Disposition");
+                let filename = fileType === "pdf" ? "document.pdf" : "document.docx";
+
+                if (disposition && disposition.includes("filename=")) {
+                    const match = disposition.match(/filename="?([^"]+)"?/);
+                    if (match && match[1]) {
+                        filename = decodeURIComponent(match[1]);
+                    }
+                }
+
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                window.URL.revokeObjectURL(url);
+
+            } catch (error) {
+                alert(error.message || "파일 다운로드 중 문제가 발생했습니다.");
+            } finally {
+                button.disabled = false;
+                button.innerText = originalText;
             }
         }
     </script>
