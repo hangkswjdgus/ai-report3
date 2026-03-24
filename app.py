@@ -11,6 +11,7 @@ from datetime import datetime
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.oxml.ns import qn
 
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -39,6 +40,7 @@ ALLOWED_MODES = {
     "evidence_boost",
     "personalized",
 }
+ALLOWED_REF_STYLES = {"default", "apa", "mla", "chicago"}
 
 
 def normalize_value(value: Any, default: str = "") -> str:
@@ -60,6 +62,10 @@ def sanitize_input(data: Dict[str, Any]) -> Dict[str, str]:
     if mode not in ALLOWED_MODES:
         mode = "natural"
 
+    ref_style = normalize_value(data.get("reference_style"), "apa").lower()
+    if ref_style not in ALLOWED_REF_STYLES:
+        ref_style = "apa"
+
     topic = normalize_value(data.get("topic"), "일반적인 주제")
     tone = normalize_value(data.get("tone"), "자연스럽고 이해하기 쉽게")
     purpose = normalize_value(data.get("purpose"), "일반적인 설명")
@@ -71,6 +77,13 @@ def sanitize_input(data: Dict[str, Any]) -> Dict[str, str]:
     professor_style = normalize_value(data.get("professor_style"), "")
     major = normalize_value(data.get("major"), "")
     target_company = normalize_value(data.get("target_company"), "")
+
+    intro_weight = normalize_value(data.get("intro_weight"), "보통")
+    body_weight = normalize_value(data.get("body_weight"), "보통")
+    conclusion_weight = normalize_value(data.get("conclusion_weight"), "보통")
+    balance_view = normalize_value(data.get("balance_view"), "일반")
+    include_my_opinion = normalize_value(data.get("include_my_opinion"), "아니오")
+    critical_view = normalize_value(data.get("critical_view"), "아니오")
 
     return {
         "template": template,
@@ -87,6 +100,13 @@ def sanitize_input(data: Dict[str, Any]) -> Dict[str, str]:
         "professor_style": professor_style,
         "major": major,
         "target_company": target_company,
+        "reference_style": ref_style,
+        "intro_weight": intro_weight,
+        "body_weight": body_weight,
+        "conclusion_weight": conclusion_weight,
+        "balance_view": balance_view,
+        "include_my_opinion": include_my_opinion,
+        "critical_view": critical_view,
     }
 
 
@@ -132,10 +152,47 @@ def get_mode_rules(mode: str) -> str:
 작성 모드: 개인화 모드
 - 사용자가 제공한 전공, 수업 맥락, 관점, 경험, 관심사, 교수 요구사항을 적극 반영할 것.
 - 단, 사용자가 제공하지 않은 개인 경험이나 감정은 지어내지 말 것.
-- 문체는 자연스럽고 개별 작성자 관점이 느껴지게 하되, 평가 회피나 AI 사용 은폐를 목표로 하지 말 것.
+- 문체는 자연스럽고 개별 작성자 관점이 느껴지게 하되, AI 사용 사실을 숨기기 위한 목적의 표현 최적화는 하지 말 것.
 - "나는", "본인은", "이번 수업에서", "내가 주목한 점은" 등의 표현은 사용자가 제공한 맥락이 있을 때만 제한적으로 활용할 것.
 """
     return ""
+
+
+def get_reference_style_instruction(style: str) -> str:
+    if style == "apa":
+        return "참고문헌은 APA 스타일에 최대한 가깝게 정리할 것."
+    if style == "mla":
+        return "참고문헌은 MLA 스타일에 최대한 가깝게 정리할 것."
+    if style == "chicago":
+        return "참고문헌은 Chicago 스타일에 최대한 가깝게 정리할 것."
+    return "참고문헌은 읽기 좋은 기본 학술 형식으로 정리할 것."
+
+
+def get_assignment_rules(payload: Dict[str, str]) -> str:
+    intro_weight = payload["intro_weight"]
+    body_weight = payload["body_weight"]
+    conclusion_weight = payload["conclusion_weight"]
+    balance_view = payload["balance_view"]
+    include_my_opinion = payload["include_my_opinion"]
+    critical_view = payload["critical_view"]
+
+    return f"""
+과제 특화 옵션:
+- 서론 분량 비중: {intro_weight}
+- 본론 분량 비중: {body_weight}
+- 결론 분량 비중: {conclusion_weight}
+- 찬반 균형 설정: {balance_view}
+- 내 의견 포함 여부: {include_my_opinion}
+- 비판적 관점 포함 여부: {critical_view}
+
+적용 규칙:
+1. 분량 비중 설정을 실제 문단 길이에 반영할 것.
+2. 찬반 균형이 "균형 있게"이면 장점과 한계를 모두 다룰 것.
+3. 찬반 균형이 "찬성 중심"이면 긍정적 효과를 중심으로 쓰되 한계도 짧게 언급할 것.
+4. 찬반 균형이 "비판 중심"이면 문제점과 한계를 중심으로 쓰되 필요 시 장점도 짧게 언급할 것.
+5. 비판적 관점 포함이 "예"이면 근거 기반의 한계, 반론, 주의점도 함께 쓸 것.
+6. 내 의견 포함이 "예"이면 결론 또는 본론 후반부에 사용자의 관점을 드러내는 문단을 포함할 수 있다. 단, 사용자가 제공하지 않은 경험은 지어내지 말 것.
+"""
 
 
 def get_template_structure(
@@ -264,6 +321,7 @@ def build_prompt(payload: Dict[str, str]) -> str:
     details = payload["details"]
     extra = payload["extra"]
     mode = payload["mode"]
+    reference_style = payload["reference_style"]
 
     user_perspective = payload["user_perspective"]
     class_context = payload["class_context"]
@@ -274,6 +332,8 @@ def build_prompt(payload: Dict[str, str]) -> str:
 
     length_rule = get_length_rule(length)
     mode_rules = get_mode_rules(mode)
+    ref_style_instruction = get_reference_style_instruction(reference_style)
+    assignment_rules = get_assignment_rules(payload)
 
     common_rules = f"""
 너는 상업용 문서 생성 서비스의 고급 작성 엔진이다.
@@ -292,26 +352,25 @@ def build_prompt(payload: Dict[str, str]) -> str:
 10. 문체는 {tone}를 기본으로 하되, 사용자 목적과 문서 유형에 맞게 조정할 것.
 11. {length_rule}
 12. 마지막에는 references 배열에 실제 사용한 참고자료만 정리할 것.
-13. 참고문헌은 가능한 한 APA 스타일에 가깝게 정리할 것.
+13. {ref_style_instruction}
 14. 본문에는 가능한 경우 인용 표시를 넣을 것.
 15. 인용 표시는 자연스럽게 다음 형태를 우선 사용할 것:
    - (저자, 연도)
    - (기관명, 연도)
    - 문장형 예: 한국교육학술정보원(2023)에 따르면 ...
 16. references는 본문에 실제로 반영된 자료만 넣을 것.
-17. JSON 객체만 출력할 것. 코드블록, 설명문, 서문은 금지한다.
-18. body에는 문서 본문만 넣을 것.
-19. references에는 참고문헌 문자열 배열만 넣을 것.
-20. citations에는 본문에 반영한 주요 인용 근거를 짧게 요약해서 넣을 것.
-21. output_language는 반드시 "ko"로 넣을 것.
+17. citations에는 본문에 반영한 주요 인용 근거를 짧게 요약해서 넣을 것.
+18. JSON 객체만 출력할 것. 코드블록, 설명문, 서문은 금지한다.
+19. body에는 문서 본문만 넣을 것.
+20. output_language는 반드시 "ko"로 넣을 것.
 
 반드시 아래 JSON 형식으로만 응답해라:
 {{
   "title": "문서 제목",
   "body": "문서 본문 전체",
   "references": [
-    "APA 스타일 참고문헌 1",
-    "APA 스타일 참고문헌 2"
+    "참고문헌 1",
+    "참고문헌 2"
   ],
   "citations": [
     "본문에 사용한 핵심 인용 1",
@@ -341,13 +400,117 @@ def build_prompt(payload: Dict[str, str]) -> str:
 - 한국 자료가 있으면 우선 사용하고, 부족하면 해외 공공기관, 대학, 학술 자료를 추가할 것.
 - 정부기관, 공공기관, 대학, 학술지, 국제기구 자료를 우선 사용할 것.
 - 수치가 포함된 자료가 있으면 우선 활용하되, 수치만 던지고 끝내지 말고 의미를 설명할 것.
-- APA 형식 참고문헌으로 최대한 정리할 것.
-- 본문에는 가능한 범위에서 자연스럽게 인용을 넣을 것.
 - references에는 실제 사용한 자료만 넣을 것.
-- 근거를 충분히 사용하되, 글 전체가 자료 나열문처럼 보이지 않도록 해석과 주장을 함께 쓸 것.
+- 글 전체가 자료 나열문처럼 보이지 않도록 해석과 주장을 함께 쓸 것.
 """
 
-    return f"{common_rules}\n{mode_rules}\n{structure}\n{web_rules}"
+    return f"{common_rules}\n{mode_rules}\n{assignment_rules}\n{structure}\n{web_rules}"
+
+
+def build_refine_prompt(action: str, title: str, body: str, template: str, tone: str) -> str:
+    action_map = {
+        "polish_style": """
+목표:
+- 문체를 더 매끄럽고 자연스럽게 다듬을 것.
+- 의미는 유지하되 문장 연결과 표현을 개선할 것.
+- 지나치게 딱딱하거나 반복적인 표현을 줄일 것.
+""",
+        "strengthen_evidence": """
+목표:
+- 본문의 핵심 주장에 더 구체적인 근거와 자료를 보강할 것.
+- 가능하면 신뢰 가능한 통계, 연구, 보고서, 기관 자료를 추가할 것.
+- 단, 지어내지 말고 실제 확인 가능한 내용만 사용할 것.
+""",
+        "expand_conclusion": """
+목표:
+- 결론 부분을 더 풍부하게 확장할 것.
+- 단순 요약을 넘어서 시사점, 한계, 향후 방향까지 포함할 것.
+""",
+        "presentation_summary": """
+목표:
+- 원문을 바탕으로 발표용 요약본 성격을 일부 반영해 문장을 더 명확하게 정리할 것.
+- 핵심 메시지가 잘 드러나도록 문단을 정돈할 것.
+- 원문 길이를 너무 심하게 줄이지는 말 것.
+""",
+        "add_critical_view": """
+목표:
+- 기존 글에 비판적 관점과 한계, 반론, 주의점을 추가할 것.
+- 균형 잡힌 시각이 드러나도록 쓸 것.
+"""
+    }
+
+    selected_action = action_map.get(action, action_map["polish_style"])
+
+    return f"""
+너는 사용자가 이미 생성한 문서를 후처리하는 편집 엔진이다.
+
+문서 유형: {template}
+기본 문체: {tone}
+
+{selected_action}
+
+절대 규칙:
+1. 원문 구조를 최대한 유지할 것.
+2. 제목은 유지하되 필요하면 더 자연스럽게 다듬을 수 있다.
+3. 근거를 보강할 때는 실제 확인 가능한 내용만 사용할 것.
+4. 지어낸 통계, 논문, 기관명을 넣지 말 것.
+5. 결과는 JSON 형식으로만 출력할 것.
+
+반드시 아래 JSON 형식으로만 응답:
+{{
+  "title": "수정된 제목",
+  "body": "수정된 본문",
+  "references": [
+    "참고문헌 1"
+  ],
+  "citations": [
+    "핵심 인용 1"
+  ],
+  "output_language": "ko"
+}}
+
+원문 제목:
+{title}
+
+원문 본문:
+{body}
+"""
+
+
+def build_references_prompt(title: str, body: str, reference_style: str) -> str:
+    ref_style_instruction = get_reference_style_instruction(reference_style)
+
+    return f"""
+너는 문서 본문을 읽고 참고문헌과 본문 인용 요약만 재정리하는 엔진이다.
+
+절대 규칙:
+1. 본문에 실제로 반영된 자료만 추정하여 정리할 것.
+2. 확인할 수 없는 자료는 지어내지 말 것.
+3. {ref_style_instruction}
+4. 결과는 JSON 형식으로만 출력할 것.
+5. body는 수정하지 말고 그대로 반환할 것.
+
+반드시 아래 JSON 형식으로만 응답:
+{{
+  "title": "{title}",
+  "body": "원문 본문 그대로",
+  "references": [
+    "참고문헌 1",
+    "참고문헌 2"
+  ],
+  "citations": [
+    "본문에서 사용된 핵심 인용 1",
+    "본문에서 사용된 핵심 인용 2"
+  ],
+  "output_language": "ko"
+}}
+
+제목:
+{title}
+
+본문:
+{body}
+"""
 
 
 def extract_json_text(raw_text: str) -> str:
@@ -443,24 +606,16 @@ def safe_filename(title: str, ext: str) -> str:
     return f"{cleaned}.{ext}"
 
 
-def build_full_text(title: str, body: str, references: List[str], citations: List[str]) -> str:
-    parts = [title, "", body]
+def set_run_korean_font(run, font_name="Malgun Gothic", font_size=11, bold=False):
+    run.font.name = font_name
+    run.font.size = Pt(font_size)
+    run.bold = bold
 
-    if citations:
-        parts.append("")
-        parts.append("인용 요약")
-        parts.append("-" * 20)
-        for item in citations:
-            parts.append(f"- {item}")
-
-    if references:
-        parts.append("")
-        parts.append("참고문헌")
-        parts.append("-" * 20)
-        for ref in references:
-            parts.append(f"- {ref}")
-
-    return "\n".join(parts)
+    r = run._element
+    r.rPr.rFonts.set(qn("w:ascii"), font_name)
+    r.rPr.rFonts.set(qn("w:hAnsi"), font_name)
+    r.rPr.rFonts.set(qn("w:eastAsia"), font_name)
+    r.rPr.rFonts.set(qn("w:cs"), font_name)
 
 
 def create_docx_file(title: str, body: str, references: List[str], citations: List[str]) -> BytesIO:
@@ -469,18 +624,21 @@ def create_docx_file(title: str, body: str, references: List[str], citations: Li
     style = doc.styles["Normal"]
     style.font.name = "Malgun Gothic"
     style.font.size = Pt(11)
+    style._element.rPr.rFonts.set(qn("w:ascii"), "Malgun Gothic")
+    style._element.rPr.rFonts.set(qn("w:hAnsi"), "Malgun Gothic")
+    style._element.rPr.rFonts.set(qn("w:eastAsia"), "Malgun Gothic")
+    style._element.rPr.rFonts.set(qn("w:cs"), "Malgun Gothic")
 
     title_para = doc.add_paragraph()
     title_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    run = title_para.add_run(title)
-    run.bold = True
-    run.font.size = Pt(16)
-    run.font.name = "Malgun Gothic"
+    title_run = title_para.add_run(title)
+    set_run_korean_font(title_run, font_name="Malgun Gothic", font_size=16, bold=True)
 
     doc.add_paragraph("")
 
     for line in body.split("\n"):
         stripped = line.strip()
+
         if not stripped:
             doc.add_paragraph("")
             continue
@@ -488,36 +646,33 @@ def create_docx_file(title: str, body: str, references: List[str], citations: Li
         if stripped.startswith("# "):
             p = doc.add_paragraph()
             r = p.add_run(stripped[2:].strip())
-            r.bold = True
-            r.font.size = Pt(14)
-            r.font.name = "Malgun Gothic"
+            set_run_korean_font(r, font_name="Malgun Gothic", font_size=14, bold=True)
         else:
             p = doc.add_paragraph()
             r = p.add_run(stripped)
-            r.font.name = "Malgun Gothic"
-            r.font.size = Pt(11)
+            set_run_korean_font(r, font_name="Malgun Gothic", font_size=11, bold=False)
 
     if citations:
         doc.add_paragraph("")
         p = doc.add_paragraph()
         r = p.add_run("인용 요약")
-        r.bold = True
-        r.font.size = Pt(13)
-        r.font.name = "Malgun Gothic"
+        set_run_korean_font(r, font_name="Malgun Gothic", font_size=13, bold=True)
 
         for item in citations:
-            doc.add_paragraph(item, style="List Bullet")
+            p = doc.add_paragraph(style="List Bullet")
+            r = p.add_run(item)
+            set_run_korean_font(r, font_name="Malgun Gothic", font_size=11, bold=False)
 
     if references:
         doc.add_paragraph("")
         p = doc.add_paragraph()
         r = p.add_run("참고문헌")
-        r.bold = True
-        r.font.size = Pt(13)
-        r.font.name = "Malgun Gothic"
+        set_run_korean_font(r, font_name="Malgun Gothic", font_size=13, bold=True)
 
         for ref in references:
-            doc.add_paragraph(ref, style="List Bullet")
+            p = doc.add_paragraph(style="List Bullet")
+            r = p.add_run(ref)
+            set_run_korean_font(r, font_name="Malgun Gothic", font_size=11, bold=False)
 
     file_stream = BytesIO()
     doc.save(file_stream)
@@ -526,9 +681,6 @@ def create_docx_file(title: str, body: str, references: List[str], citations: Li
 
 
 def register_korean_font() -> str:
-    """
-    프로젝트 내 fonts/NanumGothic.ttf 사용
-    """
     font_path = os.path.join(app.root_path, "fonts", "NanumGothic.ttf")
     font_name = "Helvetica"
 
@@ -659,7 +811,8 @@ def generate():
                 "template": payload["template"],
                 "mode": payload["mode"],
                 "length": payload["length"],
-                "tone": payload["tone"]
+                "tone": payload["tone"],
+                "reference_style": payload["reference_style"]
             }
         })
 
@@ -671,6 +824,82 @@ def generate():
             "references": [],
             "citations": [],
             "output_language": "ko"
+        }), 500
+
+
+@app.route("/refine", methods=["POST"])
+def refine():
+    try:
+        data = request.get_json(silent=True) or {}
+
+        action = normalize_value(data.get("action"), "polish_style")
+        title = normalize_value(data.get("title"), "생성된 문서")
+        body = normalize_value(data.get("body"), "")
+        template = normalize_value(data.get("template"), "report")
+        tone = normalize_value(data.get("tone"), "자연스럽고 이해하기 쉽게")
+
+        prompt = build_refine_prompt(action, title, body, template, tone)
+
+        response = client.responses.create(
+            model=MODEL_NAME,
+            tools=[{"type": "web_search_preview"}],
+            input=prompt
+        )
+
+        raw_text = response.output_text.strip()
+        new_title, new_body, references, citations, output_language = parse_model_response(raw_text)
+
+        return jsonify({
+            "success": True,
+            "title": new_title,
+            "body": new_body,
+            "references": references,
+            "citations": citations,
+            "output_language": output_language
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"후처리 중 오류 발생: {str(e)}"
+        }), 500
+
+
+@app.route("/rebuild_references", methods=["POST"])
+def rebuild_references():
+    try:
+        data = request.get_json(silent=True) or {}
+
+        title = normalize_value(data.get("title"), "생성된 문서")
+        body = normalize_value(data.get("body"), "")
+        reference_style = normalize_value(data.get("reference_style"), "apa").lower()
+        if reference_style not in ALLOWED_REF_STYLES:
+            reference_style = "apa"
+
+        prompt = build_references_prompt(title, body, reference_style)
+
+        response = client.responses.create(
+            model=MODEL_NAME,
+            tools=[{"type": "web_search_preview"}],
+            input=prompt
+        )
+
+        raw_text = response.output_text.strip()
+        new_title, new_body, references, citations, output_language = parse_model_response(raw_text)
+
+        return jsonify({
+            "success": True,
+            "title": new_title,
+            "body": new_body,
+            "references": references,
+            "citations": citations,
+            "output_language": output_language
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"참고문헌 재생성 중 오류 발생: {str(e)}"
         }), 500
 
 
