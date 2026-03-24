@@ -204,12 +204,6 @@
             background: #c2410c;
         }
 
-        .result-title {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 14px;
-        }
-
         #resultTitleInput {
             font-size: 22px;
             font-weight: bold;
@@ -531,12 +525,12 @@
             </div>
         </div>
 
-        <div class="box">
+        <div class="box" id="citationBox">
             <div class="section-title">7. 인용 요약 편집</div>
             <textarea id="citationEditor" placeholder="본문에 반영된 인용 요약이 여기에 표시됩니다. 직접 수정도 가능합니다."></textarea>
         </div>
 
-        <div class="box">
+        <div class="box" id="referenceBox">
             <div class="section-title">8. 참고문헌 편집</div>
             <textarea id="referenceEditor" placeholder="참고문헌이 여기에 표시됩니다. 직접 수정도 가능합니다."></textarea>
         </div>
@@ -582,6 +576,13 @@
             };
         }
 
+        function parseTextAreaList(text) {
+            return text
+                .split("\n")
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+        }
+
         function getCurrentDocument() {
             const references = parseTextAreaList(document.getElementById("referenceEditor").value);
             const citations = parseTextAreaList(document.getElementById("citationEditor").value);
@@ -603,13 +604,15 @@
             const hasBody = !!(data.body && data.body.trim());
             document.getElementById("downloadPdfButton").disabled = !hasBody;
             document.getElementById("downloadDocxButton").disabled = !hasBody;
-        }
 
-        function parseTextAreaList(text) {
-            return text
-                .split("\n")
-                .map(line => line.trim())
-                .filter(line => line.length > 0);
+            const referenceBox = document.getElementById("referenceBox");
+            const citationBox = document.getElementById("citationBox");
+
+            const hasReferences = Array.isArray(data.references) && data.references.length > 0;
+            const hasCitations = Array.isArray(data.citations) && data.citations.length > 0;
+
+            referenceBox.style.display = hasReferences ? "block" : "none";
+            citationBox.style.display = hasCitations ? "block" : "none";
         }
 
         async function generateDocument() {
@@ -621,8 +624,8 @@
             applyDocumentToEditor({
                 title: "생성 중입니다...",
                 body: "잠시만 기다려 주세요.",
-                references: ["참고문헌을 정리하는 중입니다..."],
-                citations: ["인용 요약을 정리하는 중입니다..."]
+                references: [],
+                citations: []
             });
 
             const controller = new AbortController();
@@ -748,8 +751,12 @@
                     throw new Error(data.message || "참고문헌 재생성에 실패했습니다.");
                 }
 
-                document.getElementById("referenceEditor").value = (data.references || []).join("\n");
-                document.getElementById("citationEditor").value = (data.citations || []).join("\n");
+                applyDocumentToEditor({
+                    title: data.title || current.title,
+                    body: data.body || current.body,
+                    references: data.references || [],
+                    citations: data.citations || []
+                });
 
                 saveCurrentDocument(true);
                 setStatus("참고문헌 재정리가 완료되었습니다.");
@@ -990,6 +997,8 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             renderRecentDocuments();
+            document.getElementById("referenceBox").style.display = "none";
+            document.getElementById("citationBox").style.display = "none";
             setStatus("준비되었습니다.");
         });
     </script>

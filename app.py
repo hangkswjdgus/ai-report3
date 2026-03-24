@@ -360,9 +360,13 @@ def build_prompt(payload: Dict[str, str]) -> str:
    - 문장형 예: 한국교육학술정보원(2023)에 따르면 ...
 16. references는 본문에 실제로 반영된 자료만 넣을 것.
 17. citations에는 본문에 반영한 주요 인용 근거를 짧게 요약해서 넣을 것.
-18. JSON 객체만 출력할 것. 코드블록, 설명문, 서문은 금지한다.
-19. body에는 문서 본문만 넣을 것.
-20. output_language는 반드시 "ko"로 넣을 것.
+18. body에는 오직 본문만 넣을 것.
+19. body 안에 절대로 "참고문헌", "참고자료", "인용" 섹션을 넣지 말 것.
+20. 참고문헌은 반드시 references 배열에만 넣을 것.
+21. 인용 요약은 반드시 citations 배열에만 넣을 것.
+22. JSON 객체만 출력할 것. 코드블록, 설명문, 서문은 금지한다.
+23. JSON 바깥에 아무 텍스트도 출력하지 말 것.
+24. output_language는 반드시 "ko"로 넣을 것.
 
 반드시 아래 JSON 형식으로만 응답해라:
 {{
@@ -454,7 +458,10 @@ def build_refine_prompt(action: str, title: str, body: str, template: str, tone:
 2. 제목은 유지하되 필요하면 더 자연스럽게 다듬을 수 있다.
 3. 근거를 보강할 때는 실제 확인 가능한 내용만 사용할 것.
 4. 지어낸 통계, 논문, 기관명을 넣지 말 것.
-5. 결과는 JSON 형식으로만 출력할 것.
+5. body에는 본문만 넣을 것.
+6. 본문 안에 참고문헌/인용 섹션을 직접 만들지 말 것.
+7. references와 citations는 별도 배열로 정리할 것.
+8. 결과는 JSON 형식으로만 출력할 것.
 
 반드시 아래 JSON 형식으로만 응답:
 {{
@@ -487,8 +494,10 @@ def build_references_prompt(title: str, body: str, reference_style: str) -> str:
 1. 본문에 실제로 반영된 자료만 추정하여 정리할 것.
 2. 확인할 수 없는 자료는 지어내지 말 것.
 3. {ref_style_instruction}
-4. 결과는 JSON 형식으로만 출력할 것.
-5. body는 수정하지 말고 그대로 반환할 것.
+4. body는 수정하지 말고 그대로 반환할 것.
+5. 본문 안에 참고문헌/인용 섹션을 직접 넣지 말 것.
+6. references와 citations만 따로 정리할 것.
+7. 결과는 JSON 형식으로만 출력할 것.
 
 반드시 아래 JSON 형식으로만 응답:
 {{
@@ -534,6 +543,74 @@ def extract_json_text(raw_text: str) -> str:
     return text.strip()
 
 
+def cleanup_body_text(body: str) -> str:
+    if not body:
+        return body
+
+    text = body.strip()
+
+    patterns = [
+        r'\n#\s*참고문헌[\s\S]*$',
+        r'\n#\s*참고자료[\s\S]*$',
+        r'\n#\s*인용[\s\S]*$',
+        r'\n참고문헌[\s\S]*$',
+        r'\n참고자료[\s\S]*$',
+        r'\n인용[\s\S]*$'
+    ]
+
+    for pattern in patterns:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+    return text.strip()
+
+
+def cleanup_list_items(items: List[str]) -> List[str]:
+    cleaned = []
+    for item in items:
+        value = normalize_value(item)
+        if not value:
+            continue
+        if "참고문헌 파싱에 실패했습니다" in value:
+            continue
+        cleaned.append(value)
+    return cleaned
+
+
+def extract_embedded_sections(body: str) -> Tuple[str, List[str], List[str]]:
+    if not body:
+        return body, [], []
+
+    references = []
+    citations = []
+    text = body
+
+    ref_match = re.search(
+        r'(?:#\s*참고문헌|#\s*참고자료|참고문헌|참고자료)\s*\n([\s\S]*?)(?:\n#\s*인용|\n인용|$)',
+        text
+    )
+    cite_match = re.search(r'(?:#\s*인용|인용)\s*\n([\s\S]*?)$', text)
+
+    if ref_match:
+        ref_block = ref_match.group(1).strip()
+        references = [
+            line.lstrip("-• ").strip()
+            for line in ref_block.split("\n")
+            if line.strip()
+        ]
+
+    if cite_match:
+        cite_block = cite_match.group(1).strip()
+        citations = [
+            line.lstrip("-• ").strip()
+            for line in cite_block.split("\n")
+            if line.strip()
+        ]
+
+    text = cleanup_body_text(text)
+
+    return text, cleanup_list_items(references), cleanup_list_items(citations)
+
+
 def parse_model_response(raw_text: str) -> Tuple[str, str, List[str], List[str], str]:
     cleaned_text = extract_json_text(raw_text)
 
@@ -552,8 +629,15 @@ def parse_model_response(raw_text: str) -> Tuple[str, str, List[str], List[str],
         if not isinstance(citations, list):
             citations = [str(citations)]
 
-        references = [normalize_value(ref) for ref in references if normalize_value(ref)]
-        citations = [normalize_value(c) for c in citations if normalize_value(c)]
+        references = cleanup_list_items(references)
+        citations = cleanup_list_items(citations)
+
+        body, embedded_refs, embedded_cites = extract_embedded_sections(body)
+
+        if embedded_refs and not references:
+            references = embedded_refs
+        if embedded_cites and not citations:
+            citations = embedded_cites
 
         if not title:
             title = "생성된 문서"
@@ -561,12 +645,12 @@ def parse_model_response(raw_text: str) -> Tuple[str, str, List[str], List[str],
         if not body:
             body = "본문을 받아오지 못했습니다."
 
-        return title, body, references, citations, output_language
+        return title, body.strip(), references, citations, output_language
 
     except Exception:
         title = "생성된 문서"
         body = raw_text.strip()
-        references = ["참고문헌 파싱에 실패했습니다. 결과를 직접 확인해 주세요."]
+        references = []
         citations = []
         output_language = "ko"
 
@@ -585,17 +669,24 @@ def parse_model_response(raw_text: str) -> Tuple[str, str, List[str], List[str],
             if refs_match:
                 parsed_refs = json.loads(refs_match.group(1))
                 if isinstance(parsed_refs, list):
-                    references = [normalize_value(ref) for ref in parsed_refs if normalize_value(ref)]
+                    references = cleanup_list_items(parsed_refs)
 
             if citations_match:
                 parsed_citations = json.loads(citations_match.group(1))
                 if isinstance(parsed_citations, list):
-                    citations = [normalize_value(c) for c in parsed_citations if normalize_value(c)]
+                    citations = cleanup_list_items(parsed_citations)
+
+            body, embedded_refs, embedded_cites = extract_embedded_sections(body)
+
+            if embedded_refs and not references:
+                references = embedded_refs
+            if embedded_cites and not citations:
+                citations = embedded_cites
 
         except Exception:
-            pass
+            body = cleanup_body_text(body)
 
-        return title, body, references, citations, output_language
+        return title, body.strip(), references, citations, output_language
 
 
 def safe_filename(title: str, ext: str) -> str:
