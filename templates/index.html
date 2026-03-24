@@ -3,546 +3,983 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 문서 생성기</title>
+    <title>보고서 생성 프로그램</title>
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #f7f7f5;
+            --panel: #ffffff;
+            --line: #e8e8e4;
+            --text: #111111;
+            --muted: #6b6b6b;
+            --soft: #8b8b8b;
+            --accent: #1f4fff;
+            --accent-hover: #183fe0;
+            --shadow: 0 10px 30px rgba(17, 17, 17, 0.06);
+            --radius-xl: 24px;
+            --radius-lg: 18px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+        }
 
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6fb;
-            color: #222;
+            font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
         }
 
-        .container {
-            max-width: 1240px;
-            margin: 30px auto;
-            padding: 20px;
+        .page {
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 28px 24px 56px;
         }
 
-        h1 {
-            text-align: center;
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-mark {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: #111;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-text h1 {
+            margin: 0;
+            font-size: 20px;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+        }
+
+        .brand-text p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .hero-left,
+        .hero-right,
+        .section-card,
+        .document-card,
+        .reference-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            border-radius: var(--radius-xl);
+        }
+
+        .hero-left {
+            padding: 34px;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 32px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 18px;
+            background: #fbfbfa;
+        }
+
+        .hero-left h2 {
+            margin: 0;
+            font-size: 42px;
+            line-height: 1.15;
+            letter-spacing: -0.045em;
+        }
+
+        .hero-left p {
+            margin: 16px 0 0;
+            max-width: 660px;
+            color: var(--muted);
+            font-size: 16px;
+        }
+
+        .hero-points {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 26px;
+        }
+
+        .hero-point {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            background: #fcfcfb;
+        }
+
+        .hero-point strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .hero-point span {
+            color: var(--muted);
+            font-size: 13px;
+            display: block;
+        }
+
+        .hero-right {
+            padding: 26px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 100%;
+        }
+
+        .preview-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .preview-top strong {
+            font-size: 15px;
+        }
+
+        .preview-chip {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #f3f4f6;
+            color: var(--muted);
+            font-size: 12px;
+            border: 1px solid var(--line);
+        }
+
+        .preview-sheet {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 22px;
+            background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+            min-height: 290px;
+        }
+
+        .preview-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 14px;
+        }
+
+        .preview-line {
+            height: 10px;
+            border-radius: 999px;
+            background: #efefec;
             margin-bottom: 10px;
         }
 
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 28px;
+        .preview-line.short {
+            width: 48%;
+        }
+
+        .preview-line.mid {
+            width: 72%;
+        }
+
+        .preview-line.long {
+            width: 100%;
+        }
+
+        .preview-divider {
+            height: 1px;
+            background: var(--line);
+            margin: 16px 0;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 430px 1fr;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            position: sticky;
+            top: 20px;
+        }
+
+        .section-card {
+            padding: 22px;
         }
 
         .section-title {
-            font-size: 22px;
-            margin: 28px 0 14px;
-            font-weight: bold;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+        }
+
+        .section-sub {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: -8px;
+            margin-bottom: 14px;
         }
 
         .template-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
 
         .template-card {
-            background: white;
-            border: 2px solid transparent;
+            border: 1px solid var(--line);
             border-radius: 16px;
-            padding: 16px;
+            padding: 14px;
+            background: #fff;
             cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            transition: 0.18s ease;
         }
 
         .template-card:hover {
-            transform: translateY(-3px);
+            transform: translateY(-2px);
+            border-color: #d9d9d3;
         }
 
         .template-card.selected {
-            border-color: #4f46e5;
-            background: #eef2ff;
+            border-color: rgba(31, 79, 255, 0.35);
+            box-shadow: 0 0 0 3px rgba(31, 79, 255, 0.08);
+            background: #fcfdff;
         }
 
-        .template-image {
-            width: 100%;
-            height: 110px;
+        .template-icon {
+            width: 38px;
+            height: 38px;
             border-radius: 12px;
-            background: linear-gradient(135deg, #dbeafe, #ede9fe);
+            background: #f4f4f2;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 38px;
-            margin-bottom: 12px;
+            font-size: 18px;
+            margin-bottom: 10px;
         }
 
         .template-name {
-            font-size: 17px;
-            font-weight: bold;
-            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
         }
 
         .template-desc {
-            font-size: 14px;
-            color: #666;
-            line-height: 1.5;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.45;
         }
 
-        .box {
-            margin-top: 24px;
-            background: white;
-            border-radius: 18px;
-            padding: 22px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        .field {
+            margin-bottom: 14px;
         }
 
-        .form-group {
-            margin-bottom: 16px;
+        .field:last-child {
+            margin-bottom: 0;
         }
 
-        label {
+        .field label {
             display: block;
-            font-weight: bold;
+            font-size: 13px;
+            font-weight: 700;
             margin-bottom: 8px;
         }
 
-        input, textarea, select {
+        .field input,
+        .field textarea,
+        .field select {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            font-size: 15px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
             background: #fff;
+            color: var(--text);
+            padding: 13px 14px;
+            font-size: 14px;
+            outline: none;
         }
 
-        textarea {
-            min-height: 100px;
+        .field input:focus,
+        .field textarea:focus,
+        .field select:focus,
+        .document-title-input:focus,
+        .document-body-input:focus,
+        .reference-textarea:focus {
+            border-color: rgba(31, 79, 255, 0.4);
+            box-shadow: 0 0 0 4px rgba(31, 79, 255, 0.08);
+        }
+
+        .field textarea {
+            min-height: 96px;
             resize: vertical;
+            line-height: 1.7;
         }
 
-        .row-2 {
+        .field-grid-2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 12px;
         }
 
-        .row-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 16px;
-        }
-
-        .row-4 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-        }
-
-        button {
+        .generate-button {
+            width: 100%;
+            height: 52px;
             border: none;
-            background: #4f46e5;
-            color: white;
-            padding: 12px 16px;
-            border-radius: 12px;
+            background: var(--accent);
+            color: #fff;
+            border-radius: 16px;
             font-size: 15px;
-            font-weight: bold;
+            font-weight: 700;
             cursor: pointer;
+            transition: 0.18s ease;
+            margin-top: 8px;
         }
 
-        button:hover {
-            background: #4338ca;
+        .generate-button:hover {
+            background: var(--accent-hover);
         }
 
-        button:disabled {
+        .generate-button:disabled {
             opacity: 0.7;
             cursor: not-allowed;
         }
 
-        .main-button {
-            width: 100%;
-            margin-top: 8px;
+        .status-box {
+            margin-top: 12px;
+            min-height: 20px;
+            color: var(--muted);
+            font-size: 13px;
         }
 
-        .button-row {
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .toolbar {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            margin-top: 14px;
+            margin-top: 16px;
         }
 
-        .button-row button {
-            min-width: 150px;
+        .tool-button {
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--text);
+            border-radius: 999px;
+            padding: 11px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.18s ease;
         }
 
-        .secondary-button {
-            background: #111827;
+        .tool-button:hover {
+            background: #fafafa;
+            border-color: #d7d7d2;
         }
 
-        .secondary-button:hover {
-            background: #1f2937;
+        .document-card,
+        .reference-card {
+            padding: 24px;
         }
 
-        .light-button {
-            background: #6b7280;
+        .doc-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 18px;
         }
 
-        .light-button:hover {
-            background: #4b5563;
+        .doc-head-left {
+            min-width: 0;
         }
 
-        .green-button {
-            background: #059669;
+        .doc-kicker {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 6px;
         }
 
-        .green-button:hover {
-            background: #047857;
+        .doc-heading {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            margin: 0;
         }
 
-        .orange-button {
-            background: #ea580c;
+        .document-title-input,
+        .document-body-input,
+        .reference-textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: #fff;
+            color: var(--text);
+            padding: 16px;
+            font-size: 15px;
+            outline: none;
         }
 
-        .orange-button:hover {
-            background: #c2410c;
-        }
-
-        #resultTitleInput {
+        .document-title-input {
             font-size: 22px;
-            font-weight: bold;
-            min-height: auto;
+            font-weight: 700;
+            margin-bottom: 14px;
         }
 
-        #resultBodyInput {
-            min-height: 520px;
+        .document-body-input {
+            min-height: 420px;
+            resize: vertical;
+            line-height: 1.85;
+        }
+
+        .reference-textarea {
+            min-height: 220px;
+            resize: vertical;
             line-height: 1.8;
         }
 
-        #referenceEditor, #citationEditor {
-            min-height: 220px;
-            line-height: 1.7;
-        }
-
-        .notice {
-            color: #666;
-            font-size: 14px;
-            margin-top: 8px;
-        }
-
-        .status-box {
-            margin-top: 12px;
-            color: #555;
-            font-size: 14px;
-        }
-
-        .recent-list {
+        .download-group {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .recent-item {
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
             align-items: center;
+            gap: 0;
+            position: relative;
         }
 
-        .recent-item-title {
-            font-weight: bold;
+        .download-main {
+            min-width: 180px;
+            height: 50px;
+            border: none;
+            background: #111;
+            color: #fff;
+            border-top-left-radius: 16px;
+            border-bottom-left-radius: 16px;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 0 18px;
+            cursor: pointer;
         }
 
-        .recent-item-meta {
-            color: #666;
-            font-size: 13px;
-            margin-top: 4px;
+        .download-main:hover {
+            background: #000;
         }
 
-        .recent-item-actions {
+        .download-toggle {
+            width: 52px;
+            height: 50px;
+            border: none;
+            border-left: 1px solid rgba(255,255,255,0.12);
+            background: #111;
+            color: #fff;
+            border-top-right-radius: 16px;
+            border-bottom-right-radius: 16px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .download-toggle:hover {
+            background: #000;
+        }
+
+        .download-main:disabled,
+        .download-toggle:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .download-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 180px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            box-shadow: 0 12px 30px rgba(17,17,17,0.08);
+            overflow: hidden;
+            display: none;
+            z-index: 20;
+        }
+
+        .download-menu.open {
+            display: block;
+        }
+
+        .download-item {
+            width: 100%;
+            text-align: left;
+            background: #fff;
+            color: var(--text);
+            border: none;
+            padding: 13px 14px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .download-item:hover {
+            background: #f7f7f5;
+        }
+
+        .reference-header {
             display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
         }
 
-        .small-button {
-            padding: 8px 12px;
+        .copy-button {
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--text);
+            border-radius: 12px;
+            padding: 10px 14px;
             font-size: 13px;
-            min-width: auto;
+            font-weight: 600;
+            cursor: pointer;
         }
 
-        @media (max-width: 1080px) {
-            .template-grid { grid-template-columns: repeat(2, 1fr); }
-            .row-4 { grid-template-columns: 1fr 1fr; }
-            .row-3 { grid-template-columns: 1fr; }
-            .row-2 { grid-template-columns: 1fr; }
+        .copy-button:hover {
+            background: #fafafa;
         }
 
-        @media (max-width: 640px) {
-            .template-grid { grid-template-columns: 1fr; }
-            .row-4 { grid-template-columns: 1fr; }
+        @media (max-width: 1180px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .left-panel {
+                position: static;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .page {
+                padding: 18px 14px 40px;
+            }
+
+            .hero-left,
+            .hero-right,
+            .section-card,
+            .document-card,
+            .reference-card {
+                border-radius: 20px;
+            }
+
+            .hero-left {
+                padding: 24px;
+            }
+
+            .hero-left h2 {
+                font-size: 32px;
+            }
+
+            .hero-points {
+                grid-template-columns: 1fr;
+            }
+
+            .field-grid-2,
+            .template-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .doc-header {
+                flex-direction: column;
+            }
+
+            .download-group {
+                width: 100%;
+            }
+
+            .download-main {
+                flex: 1;
+                width: calc(100% - 52px);
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>AI 문서 생성기</h1>
-        <p class="subtitle">문서 생성, 편집, 후처리, 참고문헌 재정리, 저장, 복사, PDF/DOCX 다운로드까지 한 번에 처리합니다.</p>
-
-        <div class="section-title">1. 문서 형식 선택</div>
-        <div class="template-grid">
-            <div class="template-card selected" onclick="selectTemplate('report', this)">
-                <div class="template-image">📄</div>
-                <div class="template-name">일반 보고서</div>
-                <div class="template-desc">대학 과제, 조사 보고서, 제출용 레포트 형식</div>
-            </div>
-
-            <div class="template-card" onclick="selectTemplate('paper', this)">
-                <div class="template-image">🎓</div>
-                <div class="template-name">논문 형식</div>
-                <div class="template-desc">초록, 관련 연구, 분석 중심의 학술형 구조</div>
-            </div>
-
-            <div class="template-card" onclick="selectTemplate('resume', this)">
-                <div class="template-image">🧾</div>
-                <div class="template-name">이력서 / 자기소개서</div>
-                <div class="template-desc">경험과 역량을 정리하는 자기소개형 문서</div>
-            </div>
-
-            <div class="template-card" onclick="selectTemplate('presentation', this)">
-                <div class="template-image">📊</div>
-                <div class="template-name">발표문</div>
-                <div class="template-desc">발표 원고, 발표용 설명문, 발표 정리문 형식</div>
+    <div class="page">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-mark">RP</div>
+                <div class="brand-text">
+                    <h1>보고서 생성 프로그램</h1>
+                    <p>문서 초안 작성부터 정리까지 한 곳에서</p>
+                </div>
             </div>
         </div>
 
-        <div class="box">
-            <div class="section-title">2. 문서 정보 입력</div>
+        <section class="hero">
+            <div class="hero-left">
+                <div class="hero-kicker">문서 작성 · 참고문헌 정리 · 후처리</div>
+                <h2>보고서를 더 빠르게,<br>더 정돈된 형태로.</h2>
+                <p>
+                    보고서, 발표문, 논문 형식, 자기소개서 초안까지 한 화면에서 정리할 수 있도록 구성했습니다.
+                    입력 구조와 결과 흐름을 단순하게 다듬어 실제 프로그램처럼 보이도록 설계했습니다.
+                </p>
 
-            <div class="row-4">
-                <div class="form-group">
-                    <label for="mode">작성 모드</label>
-                    <select id="mode">
-                        <option value="natural">자연스러운 문체 모드</option>
-                        <option value="draft_assist">초안 보조 모드</option>
-                        <option value="revision_assist">수정 보조 모드</option>
-                        <option value="evidence_boost">근거 강화 모드</option>
-                        <option value="personalized">개인화 모드</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="length">문서 길이</label>
-                    <select id="length">
-                        <option value="짧게">짧게</option>
-                        <option value="보통" selected>보통</option>
-                        <option value="길게">길게</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="tone">문체</label>
-                    <select id="tone">
-                        <option value="자연스럽고 이해하기 쉽게">자연스럽고 이해하기 쉽게</option>
-                        <option value="공식적이고 전문적으로">공식적이고 전문적으로</option>
-                        <option value="설득력 있고 정돈되게">설득력 있고 정돈되게</option>
-                        <option value="발표용으로 간결하게">발표용으로 간결하게</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="referenceStyle">참고문헌 스타일</label>
-                    <select id="referenceStyle">
-                        <option value="apa" selected>APA</option>
-                        <option value="mla">MLA</option>
-                        <option value="chicago">Chicago</option>
-                        <option value="default">기본 학술 형식</option>
-                    </select>
+                <div class="hero-points">
+                    <div class="hero-point">
+                        <strong>문서 형식 분리</strong>
+                        <span>보고서 · 발표문 · 논문 형식 · 자기소개서</span>
+                    </div>
+                    <div class="hero-point">
+                        <strong>후처리 결과 생성</strong>
+                        <span>문체 다듬기, 근거 보강, 결론 확장</span>
+                    </div>
+                    <div class="hero-point">
+                        <strong>참고문헌 분리</strong>
+                        <span>본문은 본문대로, 참고문헌은 별도 출력</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="topic">주제</label>
-                <input type="text" id="topic" placeholder="예: 인공지능이 교육에 미치는 영향">
-            </div>
-
-            <div class="form-group">
-                <label for="purpose">작성 목적</label>
-                <textarea id="purpose" placeholder="예: 대학 과제로 제출할 보고서이며, 장점과 한계를 균형 있게 다루고 싶음"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="details">포함하고 싶은 내용</label>
-                <textarea id="details" placeholder="예: 실제 활용 사례, 통계, 장점, 단점, 향후 전망"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="extra">추가 요구사항</label>
-                <textarea id="extra" placeholder="예: APA 참고문헌 정리, 본문 인용 포함, 서론-본론-결론 분명하게"></textarea>
-            </div>
-
-            <div class="row-2">
-                <div class="form-group">
-                    <label for="major">전공</label>
-                    <input type="text" id="major" placeholder="예: 교육학">
+            <div class="hero-right">
+                <div class="preview-top">
+                    <strong>프로그램 미리보기</strong>
+                    <div class="preview-chip">Clean Workspace</div>
                 </div>
 
-                <div class="form-group">
-                    <label for="classContext">수업 / 과제 맥락</label>
-                    <input type="text" id="classContext" placeholder="예: 교육공학 수업 기말 과제">
+                <div class="preview-sheet">
+                    <div class="preview-title">인공지능이 교육에 미치는 영향</div>
+                    <div class="preview-line long"></div>
+                    <div class="preview-line long"></div>
+                    <div class="preview-line mid"></div>
+                    <div class="preview-divider"></div>
+                    <div class="preview-line short"></div>
+                    <div class="preview-line long"></div>
+                    <div class="preview-line long"></div>
+                    <div class="preview-line mid"></div>
+                    <div class="preview-divider"></div>
+                    <div class="preview-line short"></div>
+                    <div class="preview-line long"></div>
+                    <div class="preview-line mid"></div>
                 </div>
             </div>
+        </section>
 
-            <div class="row-2">
-                <div class="form-group">
-                    <label for="userPerspective">사용자 관점</label>
-                    <textarea id="userPerspective" placeholder="예: 기술 발전 자체보다 실제 학습 효과에 더 관심이 있음"></textarea>
+        <section class="main-layout">
+            <aside class="left-panel">
+                <div class="section-card">
+                    <div class="section-title">문서 형식</div>
+                    <div class="section-sub">목적에 맞는 형식을 먼저 선택하세요.</div>
+
+                    <div class="template-grid">
+                        <div class="template-card selected" onclick="selectTemplate('report', this)">
+                            <div class="template-icon">📄</div>
+                            <div class="template-name">보고서</div>
+                            <div class="template-desc">서론, 본론, 결론 중심</div>
+                        </div>
+
+                        <div class="template-card" onclick="selectTemplate('paper', this)">
+                            <div class="template-icon">🎓</div>
+                            <div class="template-name">논문 형식</div>
+                            <div class="template-desc">초록과 분석 구조 포함</div>
+                        </div>
+
+                        <div class="template-card" onclick="selectTemplate('resume', this)">
+                            <div class="template-icon">🧾</div>
+                            <div class="template-name">자기소개서</div>
+                            <div class="template-desc">지원 동기와 역량 정리</div>
+                        </div>
+
+                        <div class="template-card" onclick="selectTemplate('presentation', this)">
+                            <div class="template-icon">📊</div>
+                            <div class="template-name">발표문</div>
+                            <div class="template-desc">도입과 핵심 메시지 중심</div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="personalExperience">개인 경험 또는 생각</label>
-                    <textarea id="personalExperience" placeholder="예: 온라인 학습 플랫폼을 사용해 본 경험이 있음"></textarea>
+                <div class="section-card">
+                    <div class="section-title">작성 설정</div>
+
+                    <div class="field-grid-2">
+                        <div class="field">
+                            <label for="mode">작성 모드</label>
+                            <select id="mode">
+                                <option value="natural">자연스러운 문체</option>
+                                <option value="draft_assist">초안 보조</option>
+                                <option value="revision_assist">수정 보조</option>
+                                <option value="evidence_boost">근거 강화</option>
+                                <option value="personalized">개인화</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="length">문서 길이</label>
+                            <select id="length">
+                                <option value="짧게">짧게</option>
+                                <option value="보통" selected>보통</option>
+                                <option value="길게">길게</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field-grid-2">
+                        <div class="field">
+                            <label for="tone">문체</label>
+                            <select id="tone">
+                                <option value="자연스럽고 이해하기 쉽게">자연스럽고 이해하기 쉽게</option>
+                                <option value="공식적이고 전문적으로">공식적이고 전문적으로</option>
+                                <option value="설득력 있고 정돈되게">설득력 있고 정돈되게</option>
+                                <option value="발표용으로 간결하게">발표용으로 간결하게</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="referenceStyle">참고문헌 스타일</label>
+                            <select id="referenceStyle">
+                                <option value="apa" selected>APA</option>
+                                <option value="mla">MLA</option>
+                                <option value="chicago">Chicago</option>
+                                <option value="default">기본 형식</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="topic">주제</label>
+                        <input type="text" id="topic" placeholder="예: 인공지능이 교육에 미치는 영향">
+                    </div>
+
+                    <div class="field">
+                        <label for="purpose">작성 목적</label>
+                        <textarea id="purpose" placeholder="예: 대학 과제로 제출할 보고서이며, 장점과 한계를 균형 있게 다루고 싶음"></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="details">포함할 내용</label>
+                        <textarea id="details" placeholder="예: 실제 활용 사례, 통계, 장점, 단점, 향후 전망"></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="extra">추가 요구사항</label>
+                        <textarea id="extra" placeholder="예: 참고문헌 정리, 결론 강조, 서론 길게"></textarea>
+                    </div>
+
+                    <div class="field-grid-2">
+                        <div class="field">
+                            <label for="major">전공</label>
+                            <input type="text" id="major" placeholder="예: 교육학">
+                        </div>
+
+                        <div class="field">
+                            <label for="classContext">수업 / 과제 맥락</label>
+                            <input type="text" id="classContext" placeholder="예: 교육공학 기말 과제">
+                        </div>
+                    </div>
+
+                    <div class="field-grid-2">
+                        <div class="field">
+                            <label for="userPerspective">사용자 관점</label>
+                            <textarea id="userPerspective" placeholder="예: 실제 학습 효과에 더 관심이 있음"></textarea>
+                        </div>
+
+                        <div class="field">
+                            <label for="personalExperience">개인 경험 또는 생각</label>
+                            <textarea id="personalExperience" placeholder="예: 온라인 학습 플랫폼 사용 경험"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="field-grid-2">
+                        <div class="field">
+                            <label for="professorStyle">교수 / 평가 스타일</label>
+                            <input type="text" id="professorStyle" placeholder="예: 근거와 해석을 함께 쓰는 형식 선호">
+                        </div>
+
+                        <div class="field">
+                            <label for="targetCompany">지원 기관 / 기업</label>
+                            <input type="text" id="targetCompany" placeholder="이력서용일 때만 입력">
+                        </div>
+                    </div>
+
+                    <div class="field-grid-2">
+                        <div class="field">
+                            <label for="introWeight">서론 비중</label>
+                            <select id="introWeight">
+                                <option value="짧게">짧게</option>
+                                <option value="보통" selected>보통</option>
+                                <option value="길게">길게</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="bodyWeight">본론 비중</label>
+                            <select id="bodyWeight">
+                                <option value="짧게">짧게</option>
+                                <option value="보통" selected>보통</option>
+                                <option value="길게">길게</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field-grid-2">
+                        <div class="field">
+                            <label for="conclusionWeight">결론 비중</label>
+                            <select id="conclusionWeight">
+                                <option value="짧게">짧게</option>
+                                <option value="보통" selected>보통</option>
+                                <option value="길게">길게</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="balanceView">찬반 균형</label>
+                            <select id="balanceView">
+                                <option value="일반" selected>일반</option>
+                                <option value="균형 있게">균형 있게</option>
+                                <option value="찬성 중심">찬성 중심</option>
+                                <option value="비판 중심">비판 중심</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field-grid-2">
+                        <div class="field">
+                            <label for="includeMyOpinion">내 의견 포함</label>
+                            <select id="includeMyOpinion">
+                                <option value="아니오" selected>아니오</option>
+                                <option value="예">예</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="criticalView">비판적 관점 포함</label>
+                            <select id="criticalView">
+                                <option value="아니오" selected>아니오</option>
+                                <option value="예">예</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="generate-button" id="generateButton" onclick="generateDocument()">보고서 생성</button>
+                    <div class="status-box" id="statusBox"></div>
                 </div>
-            </div>
+            </aside>
 
-            <div class="row-2">
-                <div class="form-group">
-                    <label for="professorStyle">교수 / 평가 스타일</label>
-                    <input type="text" id="professorStyle" placeholder="예: 근거와 해석을 함께 쓰는 보고서를 선호함">
+            <main class="right-panel">
+                <div class="document-card">
+                    <div class="doc-header">
+                        <div class="doc-head-left">
+                            <div class="doc-kicker">원본 문서</div>
+                            <h3 class="doc-heading">생성된 문서</h3>
+                        </div>
+
+                        <div class="download-group">
+                            <button class="download-main" id="downloadOriginalMain" onclick="downloadDefault('original')" disabled>다운로드</button>
+                            <button class="download-toggle" id="downloadOriginalToggle" onclick="toggleMenu('original')" disabled>▽</button>
+                            <div class="download-menu" id="downloadMenuOriginal">
+                                <button class="download-item" onclick="downloadSpecific('original', 'pdf')">PDF로 다운로드</button>
+                                <button class="download-item" onclick="downloadSpecific('original', 'docx')">DOCX로 다운로드</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input class="document-title-input" id="originalTitleInput" placeholder="생성된 제목이 여기에 표시됩니다.">
+                    <textarea class="document-body-input" id="originalBodyInput" placeholder="생성된 본문이 여기에 표시됩니다."></textarea>
+
+                    <div class="toolbar">
+                        <button class="tool-button" onclick="refineDocument('polish_style')">문체 다듬은 새 결과</button>
+                        <button class="tool-button" onclick="refineDocument('strengthen_evidence')">근거 보강한 새 결과</button>
+                        <button class="tool-button" onclick="refineDocument('expand_conclusion')">결론 확장 결과</button>
+                        <button class="tool-button" onclick="refineDocument('presentation_summary')">발표용 정리 결과</button>
+                        <button class="tool-button" onclick="refineDocument('add_critical_view')">비판 관점 추가 결과</button>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="targetCompany">지원 기업 / 기관 (이력서용)</label>
-                    <input type="text" id="targetCompany" placeholder="예: 네이버 / 교육 스타트업 / 공공기관">
-                </div>
-            </div>
+                <div class="document-card">
+                    <div class="doc-header">
+                        <div class="doc-head-left">
+                            <div class="doc-kicker">후처리 결과 문서</div>
+                            <h3 class="doc-heading">새로 생성된 결과</h3>
+                        </div>
 
-            <div class="section-title">3. 과제 특화 옵션</div>
-            <div class="row-3">
-                <div class="form-group">
-                    <label for="introWeight">서론 비중</label>
-                    <select id="introWeight">
-                        <option value="짧게">짧게</option>
-                        <option value="보통" selected>보통</option>
-                        <option value="길게">길게</option>
-                    </select>
-                </div>
+                        <div class="download-group">
+                            <button class="download-main" id="downloadRefinedMain" onclick="downloadDefault('refined')" disabled>다운로드</button>
+                            <button class="download-toggle" id="downloadRefinedToggle" onclick="toggleMenu('refined')" disabled>▽</button>
+                            <div class="download-menu" id="downloadMenuRefined">
+                                <button class="download-item" onclick="downloadSpecific('refined', 'pdf')">PDF로 다운로드</button>
+                                <button class="download-item" onclick="downloadSpecific('refined', 'docx')">DOCX로 다운로드</button>
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="form-group">
-                    <label for="bodyWeight">본론 비중</label>
-                    <select id="bodyWeight">
-                        <option value="짧게">짧게</option>
-                        <option value="보통" selected>보통</option>
-                        <option value="길게">길게</option>
-                    </select>
+                    <input class="document-title-input" id="refinedTitleInput" placeholder="후처리 결과 제목이 여기에 표시됩니다.">
+                    <textarea class="document-body-input" id="refinedBodyInput" placeholder="후처리 결과 본문이 여기에 표시됩니다."></textarea>
                 </div>
 
-                <div class="form-group">
-                    <label for="conclusionWeight">결론 비중</label>
-                    <select id="conclusionWeight">
-                        <option value="짧게">짧게</option>
-                        <option value="보통" selected>보통</option>
-                        <option value="길게">길게</option>
-                    </select>
+                <div class="reference-card" id="referenceBox">
+                    <div class="reference-header">
+                        <div>
+                            <div class="doc-kicker">참고문헌</div>
+                            <h3 class="doc-heading" style="font-size:22px;">분리된 참고문헌</h3>
+                        </div>
+                        <button class="copy-button" onclick="copyReferencesOnly()">참고문헌 복사</button>
+                    </div>
+
+                    <textarea class="reference-textarea" id="referenceEditor" placeholder="참고문헌이 여기에 표시됩니다."></textarea>
                 </div>
-            </div>
-
-            <div class="row-3">
-                <div class="form-group">
-                    <label for="balanceView">찬반 균형</label>
-                    <select id="balanceView">
-                        <option value="일반" selected>일반</option>
-                        <option value="균형 있게">균형 있게</option>
-                        <option value="찬성 중심">찬성 중심</option>
-                        <option value="비판 중심">비판 중심</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="includeMyOpinion">내 의견 포함</label>
-                    <select id="includeMyOpinion">
-                        <option value="아니오" selected>아니오</option>
-                        <option value="예">예</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="criticalView">비판적 관점 포함</label>
-                    <select id="criticalView">
-                        <option value="아니오" selected>아니오</option>
-                        <option value="예">예</option>
-                    </select>
-                </div>
-            </div>
-
-            <button class="main-button" id="generateButton" onclick="generateDocument()">문서 생성하기</button>
-            <div class="notice">생성 후에는 본문을 직접 수정하고, 후처리 버튼으로 문체와 근거를 다시 다듬을 수 있습니다.</div>
-            <div class="status-box" id="statusBox"></div>
-        </div>
-
-        <div class="box">
-            <div class="section-title">4. 최근 문서</div>
-            <div class="recent-list" id="recentDocuments">
-                <div class="notice">아직 저장된 최근 문서가 없습니다.</div>
-            </div>
-        </div>
-
-        <div class="box">
-            <div class="section-title">5. 생성 결과 편집</div>
-
-            <div class="form-group">
-                <label for="resultTitleInput">제목</label>
-                <input type="text" id="resultTitleInput" placeholder="생성된 제목이 여기에 표시됩니다.">
-            </div>
-
-            <div class="form-group">
-                <label for="resultBodyInput">본문</label>
-                <textarea id="resultBodyInput" placeholder="생성된 본문이 여기에 표시됩니다. 직접 수정도 가능합니다."></textarea>
-            </div>
-
-            <div class="button-row">
-                <button onclick="saveCurrentDocument()">현재 문서 저장</button>
-                <button class="secondary-button" onclick="copyAll()">전체 복사</button>
-                <button class="secondary-button" onclick="copyBodyOnly()">본문만 복사</button>
-                <button class="secondary-button" onclick="copyReferencesOnly()">참고문헌만 복사</button>
-                <button class="secondary-button" onclick="copyCitationsOnly()">인용만 복사</button>
-            </div>
-
-            <div class="button-row">
-                <button class="green-button" id="downloadPdfButton" onclick="downloadFile('pdf')" disabled>PDF 다운로드</button>
-                <button class="green-button" id="downloadDocxButton" onclick="downloadFile('docx')" disabled>DOCX 다운로드</button>
-            </div>
-        </div>
-
-        <div class="box">
-            <div class="section-title">6. 후처리 도구</div>
-            <div class="button-row">
-                <button class="orange-button" onclick="refineDocument('polish_style')">문체 다듬기</button>
-                <button class="orange-button" onclick="refineDocument('strengthen_evidence')">근거 강화</button>
-                <button class="orange-button" onclick="refineDocument('expand_conclusion')">결론 확장</button>
-                <button class="orange-button" onclick="refineDocument('presentation_summary')">발표용 정리</button>
-                <button class="orange-button" onclick="refineDocument('add_critical_view')">비판적 관점 추가</button>
-                <button class="light-button" onclick="rebuildReferences()">참고문헌 다시 생성</button>
-            </div>
-        </div>
-
-        <div class="box" id="citationBox">
-            <div class="section-title">7. 인용 요약 편집</div>
-            <textarea id="citationEditor" placeholder="본문에 반영된 인용 요약이 여기에 표시됩니다. 직접 수정도 가능합니다."></textarea>
-        </div>
-
-        <div class="box" id="referenceBox">
-            <div class="section-title">8. 참고문헌 편집</div>
-            <textarea id="referenceEditor" placeholder="참고문헌이 여기에 표시됩니다. 직접 수정도 가능합니다."></textarea>
-        </div>
+            </main>
+        </section>
     </div>
 
     <script>
         let selectedTemplate = "report";
+        let originalDocument = null;
+        let refinedDocument = null;
+        const defaultDownloadType = "pdf";
 
         function selectTemplate(template, element) {
             selectedTemplate = template;
-            const cards = document.querySelectorAll(".template-card");
-            cards.forEach(card => card.classList.remove("selected"));
+            document.querySelectorAll(".template-card").forEach(card => {
+                card.classList.remove("selected");
+            });
             element.classList.add("selected");
         }
 
@@ -576,43 +1013,58 @@
             };
         }
 
-        function parseTextAreaList(text) {
-            return text
-                .split("\n")
-                .map(line => line.trim())
-                .filter(line => line.length > 0);
+        async function safeParseJsonResponse(res) {
+            const contentType = res.headers.get("content-type") || "";
+            const rawText = await res.text();
+
+            if (!contentType.includes("application/json")) {
+                throw new Error(rawText || "서버가 JSON이 아닌 응답을 반환했습니다.");
+            }
+
+            try {
+                return JSON.parse(rawText);
+            } catch {
+                throw new Error(rawText || "JSON 파싱에 실패했습니다.");
+            }
         }
 
-        function getCurrentDocument() {
-            const references = parseTextAreaList(document.getElementById("referenceEditor").value);
-            const citations = parseTextAreaList(document.getElementById("citationEditor").value);
-
-            return {
-                title: document.getElementById("resultTitleInput").value.trim() || "생성된 문서",
-                body: document.getElementById("resultBodyInput").value.trim(),
-                references,
-                citations
+        function setOriginalDocument(data) {
+            originalDocument = {
+                title: data.title || "",
+                body: data.body || "",
+                references: Array.isArray(data.references) ? data.references : []
             };
+
+            document.getElementById("originalTitleInput").value = originalDocument.title;
+            document.getElementById("originalBodyInput").value = originalDocument.body;
+            document.getElementById("referenceEditor").value = originalDocument.references.join("\n");
+
+            const enabled = !!originalDocument.body;
+            document.getElementById("downloadOriginalMain").disabled = !enabled;
+            document.getElementById("downloadOriginalToggle").disabled = !enabled;
+
+            document.getElementById("referenceBox").style.display =
+                originalDocument.references.length > 0 ? "block" : "none";
         }
 
-        function applyDocumentToEditor(data) {
-            document.getElementById("resultTitleInput").value = data.title || "";
-            document.getElementById("resultBodyInput").value = data.body || "";
-            document.getElementById("referenceEditor").value = (data.references || []).join("\n");
-            document.getElementById("citationEditor").value = (data.citations || []).join("\n");
+        function setRefinedDocument(data) {
+            refinedDocument = {
+                title: data.title || "",
+                body: data.body || "",
+                references: Array.isArray(data.references) ? data.references : []
+            };
 
-            const hasBody = !!(data.body && data.body.trim());
-            document.getElementById("downloadPdfButton").disabled = !hasBody;
-            document.getElementById("downloadDocxButton").disabled = !hasBody;
+            document.getElementById("refinedTitleInput").value = refinedDocument.title;
+            document.getElementById("refinedBodyInput").value = refinedDocument.body;
 
-            const referenceBox = document.getElementById("referenceBox");
-            const citationBox = document.getElementById("citationBox");
+            const enabled = !!refinedDocument.body;
+            document.getElementById("downloadRefinedMain").disabled = !enabled;
+            document.getElementById("downloadRefinedToggle").disabled = !enabled;
 
-            const hasReferences = Array.isArray(data.references) && data.references.length > 0;
-            const hasCitations = Array.isArray(data.citations) && data.citations.length > 0;
-
-            referenceBox.style.display = hasReferences ? "block" : "none";
-            citationBox.style.display = hasCitations ? "block" : "none";
+            if (refinedDocument.references.length > 0) {
+                document.getElementById("referenceEditor").value = refinedDocument.references.join("\n");
+                document.getElementById("referenceBox").style.display = "block";
+            }
         }
 
         async function generateDocument() {
@@ -621,76 +1073,46 @@
             button.innerText = "생성 중...";
             setStatus("문서를 생성하고 있습니다.");
 
-            applyDocumentToEditor({
-                title: "생성 중입니다...",
-                body: "잠시만 기다려 주세요.",
-                references: [],
-                citations: []
-            });
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 120000);
-
             try {
-                const payload = getFormPayload();
-
                 const res = await fetch("/generate", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
+                    body: JSON.stringify(getFormPayload())
                 });
 
-                clearTimeout(timeoutId);
+                const data = await safeParseJsonResponse(res);
 
-                const data = await res.json();
                 if (!res.ok || !data.success) {
-                    throw new Error(data.body || "문서 생성 중 오류가 발생했습니다.");
+                    throw new Error(data.message || data.body || "문서 생성 중 오류가 발생했습니다.");
                 }
 
-                applyDocumentToEditor({
-                    title: data.title,
-                    body: data.body,
-                    references: data.references || [],
-                    citations: data.citations || []
-                });
+                setOriginalDocument(data);
 
-                saveCurrentDocument(true);
+                refinedDocument = null;
+                document.getElementById("refinedTitleInput").value = "";
+                document.getElementById("refinedBodyInput").value = "";
+                document.getElementById("downloadRefinedMain").disabled = true;
+                document.getElementById("downloadRefinedToggle").disabled = true;
+
+                closeMenus();
                 setStatus("문서 생성이 완료되었습니다.");
 
             } catch (error) {
-                if (error.name === "AbortError") {
-                    setStatus("시간 초과로 생성이 중단되었습니다.");
-                    applyDocumentToEditor({
-                        title: "시간 초과",
-                        body: "생성이 너무 오래 걸려 중단되었습니다. 입력을 줄이거나 다시 시도해 주세요.",
-                        references: [],
-                        citations: []
-                    });
-                } else {
-                    setStatus("문서 생성에 실패했습니다.");
-                    applyDocumentToEditor({
-                        title: "오류 발생",
-                        body: error.message || "문제 발생",
-                        references: [],
-                        citations: []
-                    });
-                }
+                setStatus("문서 생성에 실패했습니다.");
+                alert(error.message || "문서 생성 중 문제가 발생했습니다.");
             } finally {
-                clearTimeout(timeoutId);
                 button.disabled = false;
-                button.innerText = "문서 생성하기";
+                button.innerText = "보고서 생성";
             }
         }
 
         async function refineDocument(action) {
-            const current = getCurrentDocument();
-            if (!current.body) {
-                alert("먼저 문서를 생성하거나 본문을 입력해 주세요.");
+            if (!originalDocument || !originalDocument.body) {
+                alert("먼저 원본 문서를 생성해 주세요.");
                 return;
             }
 
-            setStatus("후처리 중입니다.");
+            setStatus("후처리 결과를 생성하고 있습니다.");
 
             try {
                 const res = await fetch("/refine", {
@@ -698,307 +1120,115 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         action,
-                        title: current.title,
-                        body: current.body,
+                        title: originalDocument.title,
+                        body: originalDocument.body,
                         template: selectedTemplate,
                         tone: document.getElementById("tone").value
                     })
                 });
 
-                const data = await res.json();
+                const data = await safeParseJsonResponse(res);
+
                 if (!res.ok || !data.success) {
-                    throw new Error(data.message || "후처리에 실패했습니다.");
+                    throw new Error(data.message || "후처리 중 오류가 발생했습니다.");
                 }
 
-                applyDocumentToEditor({
-                    title: data.title,
-                    body: data.body,
-                    references: data.references || [],
-                    citations: data.citations || []
-                });
-
-                saveCurrentDocument(true);
-                setStatus("후처리가 완료되었습니다.");
+                setRefinedDocument(data);
+                closeMenus();
+                setStatus("후처리 결과 문서를 생성했습니다.");
 
             } catch (error) {
                 setStatus("후처리에 실패했습니다.");
-                alert(error.message || "후처리 중 오류가 발생했습니다.");
+                alert(error.message || "후처리 중 문제가 발생했습니다.");
             }
         }
 
-        async function rebuildReferences() {
-            const current = getCurrentDocument();
-            if (!current.body) {
-                alert("먼저 문서를 생성하거나 본문을 입력해 주세요.");
+        function toggleMenu(type) {
+            const target = type === "original"
+                ? document.getElementById("downloadMenuOriginal")
+                : document.getElementById("downloadMenuRefined");
+
+            const other = type === "original"
+                ? document.getElementById("downloadMenuRefined")
+                : document.getElementById("downloadMenuOriginal");
+
+            other.classList.remove("open");
+            target.classList.toggle("open");
+        }
+
+        function closeMenus() {
+            document.getElementById("downloadMenuOriginal").classList.remove("open");
+            document.getElementById("downloadMenuRefined").classList.remove("open");
+        }
+
+        async function downloadDefault(type) {
+            await downloadSpecific(type, defaultDownloadType);
+        }
+
+        async function downloadSpecific(type, ext) {
+            const docData = type === "original" ? originalDocument : refinedDocument;
+
+            if (!docData || !docData.body) {
+                alert("다운로드할 문서가 없습니다.");
                 return;
             }
 
-            setStatus("참고문헌을 다시 정리하는 중입니다.");
+            closeMenus();
 
-            try {
-                const res = await fetch("/rebuild_references", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        title: current.title,
-                        body: current.body,
-                        reference_style: document.getElementById("referenceStyle").value
-                    })
-                });
-
-                const data = await res.json();
-                if (!res.ok || !data.success) {
-                    throw new Error(data.message || "참고문헌 재생성에 실패했습니다.");
-                }
-
-                applyDocumentToEditor({
-                    title: data.title || current.title,
-                    body: data.body || current.body,
-                    references: data.references || [],
-                    citations: data.citations || []
-                });
-
-                saveCurrentDocument(true);
-                setStatus("참고문헌 재정리가 완료되었습니다.");
-
-            } catch (error) {
-                setStatus("참고문헌 재생성에 실패했습니다.");
-                alert(error.message || "참고문헌 재생성 중 오류가 발생했습니다.");
-            }
-        }
-
-        function getStorageKey() {
-            return "ai_report_recent_documents_v1";
-        }
-
-        function loadRecentDocuments() {
-            try {
-                const raw = localStorage.getItem(getStorageKey());
-                if (!raw) return [];
-                const parsed = JSON.parse(raw);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch {
-                return [];
-            }
-        }
-
-        function saveRecentDocuments(list) {
-            localStorage.setItem(getStorageKey(), JSON.stringify(list));
-        }
-
-        function saveCurrentDocument(silent = false) {
-            const current = getCurrentDocument();
-            if (!current.body) {
-                if (!silent) alert("저장할 본문이 없습니다.");
-                return;
-            }
-
-            const list = loadRecentDocuments();
-
-            const item = {
-                id: Date.now(),
-                title: current.title || "생성된 문서",
-                body: current.body,
-                references: current.references,
-                citations: current.citations,
-                template: selectedTemplate,
-                savedAt: new Date().toLocaleString("ko-KR")
-            };
-
-            const filtered = list.filter(doc => doc.title !== item.title || doc.body !== item.body);
-            filtered.unshift(item);
-
-            const trimmed = filtered.slice(0, 10);
-            saveRecentDocuments(trimmed);
-            renderRecentDocuments();
-
-            if (!silent) {
-                setStatus("현재 문서를 최근 문서 목록에 저장했습니다.");
-            }
-        }
-
-        function renderRecentDocuments() {
-            const container = document.getElementById("recentDocuments");
-            const list = loadRecentDocuments();
-
-            if (list.length === 0) {
-                container.innerHTML = `<div class="notice">아직 저장된 최근 문서가 없습니다.</div>`;
-                return;
-            }
-
-            container.innerHTML = "";
-
-            list.forEach(item => {
-                const wrapper = document.createElement("div");
-                wrapper.className = "recent-item";
-
-                const left = document.createElement("div");
-                left.innerHTML = `
-                    <div class="recent-item-title">${escapeHtml(item.title || "생성된 문서")}</div>
-                    <div class="recent-item-meta">${escapeHtml(item.savedAt || "")} · ${escapeHtml(item.template || "")}</div>
-                `;
-
-                const right = document.createElement("div");
-                right.className = "recent-item-actions";
-
-                const loadBtn = document.createElement("button");
-                loadBtn.className = "small-button";
-                loadBtn.innerText = "불러오기";
-                loadBtn.onclick = () => {
-                    applyDocumentToEditor(item);
-                    selectedTemplate = item.template || "report";
-                    syncTemplateSelection(selectedTemplate);
-                    setStatus("최근 문서를 불러왔습니다.");
-                };
-
-                const deleteBtn = document.createElement("button");
-                deleteBtn.className = "small-button light-button";
-                deleteBtn.innerText = "삭제";
-                deleteBtn.onclick = () => {
-                    deleteRecentDocument(item.id);
-                };
-
-                right.appendChild(loadBtn);
-                right.appendChild(deleteBtn);
-
-                wrapper.appendChild(left);
-                wrapper.appendChild(right);
-                container.appendChild(wrapper);
-            });
-        }
-
-        function deleteRecentDocument(id) {
-            const list = loadRecentDocuments().filter(item => item.id !== id);
-            saveRecentDocuments(list);
-            renderRecentDocuments();
-            setStatus("최근 문서를 삭제했습니다.");
-        }
-
-        function syncTemplateSelection(template) {
-            const cards = document.querySelectorAll(".template-card");
-            cards.forEach(card => card.classList.remove("selected"));
-
-            const map = {
-                report: 0,
-                paper: 1,
-                resume: 2,
-                presentation: 3
-            };
-
-            const idx = map[template];
-            if (idx !== undefined && cards[idx]) {
-                cards[idx].classList.add("selected");
-            }
-        }
-
-        async function downloadFile(fileType) {
-            const current = getCurrentDocument();
-            if (!current.body) {
-                alert("먼저 문서를 생성하거나 본문을 입력해 주세요.");
-                return;
-            }
-
-            const endpoint = fileType === "pdf" ? "/download/pdf" : "/download/docx";
-            const button = fileType === "pdf"
-                ? document.getElementById("downloadPdfButton")
-                : document.getElementById("downloadDocxButton");
-
-            const originalText = button.innerText;
-            button.disabled = true;
-            button.innerText = "준비 중...";
+            const endpoint = ext === "pdf" ? "/download/pdf" : "/download/docx";
 
             try {
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(current)
+                    body: JSON.stringify(docData)
                 });
 
                 if (!response.ok) {
-                    let message = "파일 다운로드에 실패했습니다.";
-                    try {
-                        const errorData = await response.json();
-                        message = errorData.message || message;
-                    } catch (_) {}
-                    throw new Error(message);
+                    const text = await response.text();
+                    throw new Error(text || "파일 다운로드에 실패했습니다.");
                 }
 
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
 
-                const disposition = response.headers.get("Content-Disposition");
-                let filename = fileType === "pdf" ? "document.pdf" : "document.docx";
-
-                if (disposition && disposition.includes("filename=")) {
-                    const match = disposition.match(/filename="?([^"]+)"?/);
-                    if (match && match[1]) {
-                        filename = decodeURIComponent(match[1]);
-                    }
-                }
-
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = filename;
+                a.download = ext === "pdf" ? "document.pdf" : "document.docx";
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
 
                 window.URL.revokeObjectURL(url);
-                setStatus(`${fileType.toUpperCase()} 파일 다운로드를 시작했습니다.`);
-
             } catch (error) {
                 alert(error.message || "파일 다운로드 중 문제가 발생했습니다.");
-            } finally {
-                button.disabled = false;
-                button.innerText = originalText;
             }
         }
 
-        async function copyToClipboard(text, message) {
+        async function copyReferencesOnly() {
+            const text = document.getElementById("referenceEditor").value.trim();
+            if (!text) {
+                alert("복사할 참고문헌이 없습니다.");
+                return;
+            }
+
             try {
                 await navigator.clipboard.writeText(text);
-                setStatus(message);
+                setStatus("참고문헌을 복사했습니다.");
             } catch {
                 alert("복사에 실패했습니다.");
             }
         }
 
-        function buildAllText() {
-            const current = getCurrentDocument();
-            const refs = current.references.length ? "\n\n참고문헌\n" + current.references.map(v => `- ${v}`).join("\n") : "";
-            const cites = current.citations.length ? "\n\n인용 요약\n" + current.citations.map(v => `- ${v}`).join("\n") : "";
-            return `${current.title}\n\n${current.body}${cites}${refs}`;
-        }
-
-        function copyAll() {
-            copyToClipboard(buildAllText(), "전체 내용을 복사했습니다.");
-        }
-
-        function copyBodyOnly() {
-            copyToClipboard(document.getElementById("resultBodyInput").value.trim(), "본문만 복사했습니다.");
-        }
-
-        function copyReferencesOnly() {
-            copyToClipboard(document.getElementById("referenceEditor").value.trim(), "참고문헌만 복사했습니다.");
-        }
-
-        function copyCitationsOnly() {
-            copyToClipboard(document.getElementById("citationEditor").value.trim(), "인용 요약만 복사했습니다.");
-        }
-
-        function escapeHtml(text) {
-            return String(text)
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
-        }
+        document.addEventListener("click", (e) => {
+            const isInsideDownload = e.target.closest(".download-group");
+            if (!isInsideDownload) {
+                closeMenus();
+            }
+        });
 
         document.addEventListener("DOMContentLoaded", () => {
-            renderRecentDocuments();
             document.getElementById("referenceBox").style.display = "none";
-            document.getElementById("citationBox").style.display = "none";
             setStatus("준비되었습니다.");
         });
     </script>
